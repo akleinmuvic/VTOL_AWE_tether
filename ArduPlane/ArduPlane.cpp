@@ -503,6 +503,10 @@ void Plane::update_flight_mode(void)
 
     case RTL:
     case LOITER:
+    case LOITER_ELLIPSE:
+    case EIGHT_PLANE:
+    case LOITER_3D:
+    case EIGHT_SPHERE:
         calc_nav_roll();
         calc_nav_pitch();
         calc_throttle();
@@ -759,6 +763,24 @@ void Plane::update_navigation()
         update_cruise();
         break;
 
+    case LOITER_ELLIPSE:
+        update_loiter_ellipse();
+        break;
+
+    case EIGHT_PLANE:
+        update_eight_plane();
+        break;
+
+    case LOITER_3D:
+        update_loiter_3d();
+        break;
+
+    case EIGHT_SPHERE:
+        update_eight_sphere();
+        break;
+
+
+
     case MANUAL:
     case STABILIZE:
     case TRAINING:
@@ -827,6 +849,35 @@ void Plane::update_alt()
         if (flight_stage == AP_Vehicle::FixedWing::FLIGHT_LAND && location_passed_point(current_loc, prev_WP_loc, next_WP_loc)) {
             distance_beyond_land_wp = get_distance(current_loc, next_WP_loc);
         }
+
+  /*      if (control_mode == LOITER_3D || EIGHT_SPHERE) {
+            SpdHgt_Controller->update_pitch_throttle(relative_target_altitude_cm(),
+                target_airspeed_cm,
+                flight_stage,
+                distance_beyond_land_wp,
+                get_takeoff_pitch_min_cd(),
+                throttle_nudge,
+                tecs_hgt_afe(),
+                aerodynamic_load_factor,
+                eight_sphere.segment);
+
+        }
+        else {
+            SpdHgt_Controller->update_pitch_throttle(relative_target_altitude_cm(),
+                target_airspeed_cm,
+                flight_stage,
+                distance_beyond_land_wp,
+                get_takeoff_pitch_min_cd(),
+                throttle_nudge,
+                tecs_hgt_afe(),
+                aerodynamic_load_factor);
+        }
+
+
+  */
+
+
+
 
         bool soaring_active = false;
 #if SOARING_ENABLED == ENABLED

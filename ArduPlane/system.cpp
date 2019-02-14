@@ -459,6 +459,34 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
         auto_navigation_mode = true;
         do_loiter_at_location();
 
+    case LOITER_ELLIPSE:
+        auto_throttle_mode = true;
+        auto_navigation_mode = true;
+        do_loiter_ellipse();
+        break;
+
+    case EIGHT_PLANE:
+        auto_throttle_mode = true;
+        auto_navigation_mode = true;
+        do_eight_plane();
+        break;
+
+    case LOITER_3D:
+        auto_throttle_mode = true;
+        auto_navigation_mode = true;
+        do_loiter_3d();
+        // mission.start_or_resume();
+        break;
+
+    case EIGHT_SPHERE:
+        auto_throttle_mode = true;
+        auto_navigation_mode = true;
+        do_eight_sphere();
+        break;
+
+
+
+
 #if SOARING_ENABLED == ENABLED		
         if (g2.soaring_controller.is_active() &&
             g2.soaring_controller.suppress_throttle()) {
@@ -468,6 +496,12 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
 #endif
 		
         break;
+
+
+
+
+
+
 
     case AVOID_ADSB:
     case GUIDED:
@@ -695,6 +729,18 @@ void Plane::notify_flight_mode(enum FlightMode mode)
         break;
     case LOITER:
         notify.set_flight_mode_str("LOITER");
+        break;
+    case LOITER_ELLIPSE:
+        notify.set_flight_mode_str("LELL");
+        break;
+    case EIGHT_PLANE:
+        notify.set_flight_mode_str("8R2");
+        break;
+    case LOITER_3D:
+        notify.set_flight_mode_str("L3D");
+        break;
+    case EIGHT_SPHERE:
+        notify.set_flight_mode_str("8S2");
         break;
     case AVOID_ADSB:
         notify.set_flight_mode_str("AVOI");

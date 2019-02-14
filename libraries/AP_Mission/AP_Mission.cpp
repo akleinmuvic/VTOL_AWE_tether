@@ -695,6 +695,15 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         cmd.content.location.flags.loiter_xtrack = (packet.param4 > 0); // 0 to xtrack from center of waypoint, 1 to xtrack from tangent exit location
         break;
 
+        // dont know what this do, try writing the mav command
+/*
+    case MAV_CMD_NAV_LOITER_3D:                         // MAV ID: 38
+        break;
+
+    case MAV_CMD_NAV_EIGHT_SPHERE:                      // MAV ID: 39
+        break;
+*/
+
     case MAV_CMD_NAV_SPLINE_WAYPOINT:                   // MAV ID: 82
         copy_location = true;
         cmd.p1 = packet.param1;                         // delay at waypoint in seconds

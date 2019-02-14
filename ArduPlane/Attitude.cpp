@@ -587,6 +587,91 @@ void Plane::calc_nav_roll()
 }
 
 /*
+bool Plane::allow_reverse_thrust(void)
+{
+    // check if we should allow reverse thrust
+    bool allow = false;
+
+    if (g.use_reverse_thrust == USE_REVERSE_THRUST_NEVER) {
+        return false;
+    }
+
+    switch (control_mode) {
+    case AUTO:
+    {
+        uint16_t nav_cmd = mission.get_current_nav_cmd().id;
+
+        // never allow reverse thrust during takeoff
+        if (nav_cmd == MAV_CMD_NAV_TAKEOFF) {
+            return false;
+        }
+
+        // always allow regardless of mission item
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_AUTO_ALWAYS);
+
+        // landing
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_AUTO_LAND_APPROACH) &&
+            (nav_cmd == MAV_CMD_NAV_LAND);
+
+        // LOITER_TO_ALT
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_AUTO_LOITER_TO_ALT) &&
+            (nav_cmd == MAV_CMD_NAV_LOITER_TO_ALT);
+
+        // any Loiter (including LOITER_TO_ALT)
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_AUTO_LOITER_ALL) &&
+            (nav_cmd == MAV_CMD_NAV_LOITER_TIME ||
+                nav_cmd == MAV_CMD_NAV_LOITER_TO_ALT ||
+                nav_cmd == MAV_CMD_NAV_LOITER_TURNS ||
+                nav_cmd == MAV_CMD_NAV_LOITER_UNLIM ||
+                    nav_cmd == MAV_CMD_NAV_LOITER_ELLIPSE ||
+                    nav_cmd == MAV_CMD_NAV_EIGHT_PLANE ||
+                    nav_cmd == MAV_CMD_NAV_LOITER_3D ||
+                    nav_cmd == MAV_CMD_NAV_EIGHT_SPHERE
+);
+
+        // waypoints
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_AUTO_WAYPOINT) &&
+            (nav_cmd == MAV_CMD_NAV_WAYPOINT ||
+                nav_cmd == MAV_CMD_NAV_SPLINE_WAYPOINT);
+    }
+    break;
+
+    case LOITER:
+    case LOITER_ELLIPSE: // have to finish it
+    case EIGHT_PLANE: // have to finish it
+    case LOITER_3D: // have to finish it
+    case EIGHT_SPHERE: // have to finish it
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_LOITER);
+        break;
+    case RTL:
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_RTL);
+        break;
+    case CIRCLE:
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_CIRCLE);
+        break;
+    case CRUISE:
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_CRUISE);
+        break;
+    case FLY_BY_WIRE_B:
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_FBWB);
+        break;
+    case AVOID_ADSB:
+    case GUIDED:
+        allow |= (g.use_reverse_thrust & USE_REVERSE_THRUST_GUIDED);
+        break;
+    default:
+        // all other control_modes are auto_throttle_mode=false.
+        // If we are not controlling throttle, don't limit it.
+        allow = true;
+        break;
+    }
+
+    return allow;
+}
+
+*/
+
+/*
   adjust nav_pitch_cd for STAB_PITCH_DOWN_CD. This is used to make
   keeping up good airspeed in FBWA mode easier, as the plane will
   automatically pitch down a little when at low throttle. It makes
