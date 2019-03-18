@@ -1229,10 +1229,27 @@ bool QuadPlane::assistance_needed(float aspeed)
 /*
   update for transition from quadplane to fixed wing mode
  */
+
+ /*
+ AKM
+ block the quad assistance when in AWE modes
+ WARNING: plane must be with sufficient airspeed when the AWE mode are activeted, else it will automatically shut off the quad motors
+ AKM end
+
+ timeUS  = AP_HAL::micros64() is this where the time comes from?
+
+
+
+ */
+
 void QuadPlane::update_transition(void)
 {
     if (plane.control_mode == MANUAL ||
         plane.control_mode == ACRO ||
+        plane.control_mode == LOITER_ELLIPSE || // blocking VTOL mode in AWE mode
+        plane.control_mode == EIGHT_PLANE ||    // blocking VTOL mode in AWE mode
+        plane.control_mode == LOITER_3D ||      // blocking VTOL mode in AWE mode
+        plane.control_mode == EIGHT_SPHERE ||   // blocking VTOL mode in AWE mode
         plane.control_mode == TRAINING) {
         // in manual modes quad motors are always off
         if (!tilt.motors_active && !is_tailsitter()) {
@@ -1255,6 +1272,9 @@ void QuadPlane::update_transition(void)
     /*
       see if we should provide some assistance
      */
+
+
+
     if (have_airspeed &&
         assistance_needed(aspeed) &&
         !is_tailsitter() &&

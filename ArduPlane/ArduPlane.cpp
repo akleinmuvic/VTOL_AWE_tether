@@ -501,12 +501,21 @@ void Plane::update_flight_mode(void)
         }
         FALLTHROUGH;
 
+        // AKM: block the assisted VTOl flight from here
+
+
     case RTL:
     case LOITER:
-    case LOITER_ELLIPSE:
-    case EIGHT_PLANE:
-    case LOITER_3D:
-    case EIGHT_SPHERE:
+    case LOITER_ELLIPSE: {
+        assisted_flight = false; } //AKM
+    case EIGHT_PLANE: {
+        assisted_flight = false; } //AKM
+    case LOITER_3D: {
+        assisted_flight = false;
+        reeling_out = true;
+    } //AKM
+    case EIGHT_SPHERE: {
+        assisted_flight = false; } //AKM
         calc_nav_roll();
         calc_nav_pitch();
         calc_throttle();

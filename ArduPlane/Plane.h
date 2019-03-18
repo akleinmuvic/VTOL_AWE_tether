@@ -2101,6 +2101,19 @@ private:
     void do_eight_plane();
     void do_loiter_3d();
     void do_eight_sphere();
+    //AKM: add assisted_flight bool
+    bool assisted_flight;
+    //AKM: updating time bool
+    bool updating_time;
+    //AKM: is reeling out?
+    bool reeling_out;
+    //AKM: define reeling out time start
+    double time_reelout_start_ms;
+    double time_reelout_elapsed_s;
+    //AKM: define reel-out speed
+    double reelout_speed;
+    //AKM: reel-out distance
+    double reelout_distance;
     bool verify_loiter_heading(bool init);
     void exit_mission_callback();
     void mavlink_delay(uint32_t ms);

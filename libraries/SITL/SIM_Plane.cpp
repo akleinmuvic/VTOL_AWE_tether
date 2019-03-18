@@ -18,10 +18,17 @@
 */
 
 #include "SIM_Plane.h"
+// AKM
+// AKM: need to include this to calculate the position... or
+// or.. put the function definition on SIM_Plane.h
+
+
 
 #include <stdio.h>
 
 using namespace SITL;
+
+
 
 Plane::Plane(const char *home_str, const char *frame_str) :
     Aircraft(home_str, frame_str)
@@ -192,6 +199,23 @@ Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRu
 	return Vector3f(la, ma, na);
 }
 
+// AKM: obtaining the location of the plane
+/*
+void SITL::Plane::update_position(void)
+{
+    location = home;
+    location_offset(location, position.x, position.y);
+
+    location.alt = static_cast<int32_t>(home.alt - position.z * 100.0f);
+    double distance_to_home = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5);
+
+}
+*/
+
+//hal.console->printf("hola esto es una prueba: ");
+
+
+
 // Force calculation function from last_letter
 Vector3f Plane::getForce(float inputAileron, float inputElevator, float inputRudder) const
 {
@@ -227,6 +251,16 @@ Vector3f Plane::getForce(float inputAileron, float inputElevator, float inputRud
 	double q = gyro.y;
 	double r = gyro.z;
 
+    // AKM
+    // calculate distance to home here!!!
+    //double distance_to_home = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5);
+    //hal.console->printf("hola esto es una prueba: ");
+    //print_distance_to_home(hal.console, distance_to_home);
+    // with pre-calculated values
+    //double distance_to_home = pow(pow(location_offset, 2) + pow(location.alt, 2), 0.5);
+
+
+
 	//calculate aerodynamic force
 	double qbar = 1.0/2.0*rho*pow(airspeed,2)*s; //Calculate dynamic pressure
 	double ax, ay, az;
@@ -241,7 +275,9 @@ Vector3f Plane::getForce(float inputAileron, float inputElevator, float inputRud
 		ax = qbar*(c_x_a + c_x_q*c*q/(2*airspeed) - c_drag_deltae*cos(alpha)*fabs(inputElevator) + c_lift_deltae*sin(alpha)*inputElevator);
 		// split c_x_deltae to include "abs" term
 		ay = qbar*(c_y_0 + c_y_b*beta + c_y_p*b*p/(2*airspeed) + c_y_r*b*r/(2*airspeed) + c_y_deltaa*inputAileron + c_y_deltar*inputRudder);
-		az = qbar*(c_z_a + c_z_q*c*q/(2*airspeed) - c_drag_deltae*sin(alpha)*fabs(inputElevator) - c_lift_deltae*cos(alpha)*inputElevator);
+        // AKM: adding distance_to_home as force to see how it bahaves
+        // the force must increase as the distance gets bigger.
+        az = qbar * (c_z_a + c_z_q * c*q / (2 * airspeed) - c_drag_deltae * sin(alpha)*fabs(inputElevator) - c_lift_deltae * cos(alpha)*inputElevator);// + distance_to_home;
 		// split c_z_deltae to include "abs" term
 	}
     return Vector3f(ax, ay, az);
@@ -315,6 +351,51 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     }
     
     Vector3f force = getForce(aileron, elevator, rudder);
+    // =======================================================================================================================
+    // AKM: add force here in z direction (must be in the home direction!)
+    // create if loop that activates tether force if distance_to_home > R_sphere.
+
+    // extract the Euler angles
+    float r, p, y;
+    dcm.to_euler(&r, &p, &y);
+
+    // define sphere radius and spring elasticity constant
+    double R_sphere = 10000.0; // meters. Read from Commands_Logic.cpp
+
+    // how to calculate the tether constant of elasticity
+    /*
+R_sphere = 240; %m
+E_tether = 116E9; % Pa
+d_tether = 1.6E-3;  % m
+A_tether = pi* d_tether^2 /4; %m^2
+K_tether = E_tether * A_tether / R_sphere;
+    */
+
+
+    double K_tether = 700.0;
+    double distance_to_home = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+
+    // calculate the forces in NED coordinates
+    double F_tether_NED_x = K_tether * (distance_to_home - R_sphere)*(position.x / distance_to_home);
+    double F_tether_NED_y = K_tether * (distance_to_home - R_sphere)*(position.y / distance_to_home);
+    double F_tether_NED_z = K_tether * (distance_to_home - R_sphere)*(position.z / distance_to_home);
+
+    // rotate the forces to body axes
+    double F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+    double F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+    double F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+
+    if (distance_to_home > R_sphere){
+        force.x = force.x - F_tether_BODY_x; 
+        force.y = force.y - F_tether_BODY_y;
+        force.z = force.z - F_tether_BODY_z;
+    
+    }
+    // =======================================================================================================================
+    // AKM: end
+    
+
+
     rot_accel = getTorque(aileron, elevator, rudder, thrust, force);
 
     if (have_launcher) {
@@ -356,7 +437,8 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         accel_body.x -= vel_body.x * 0.3f;
     }
 }
-    
+
+
 /*
   update the plane simulation by one time step
  */

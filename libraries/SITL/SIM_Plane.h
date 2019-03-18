@@ -111,6 +111,10 @@ protected:
     Vector3f getForce(float inputAileron, float inputElevator, float inputRudder) const;
     Vector3f getTorque(float inputAileron, float inputElevator, float inputRudder, float inputThrust, const Vector3f &force) const;
     void calculate_forces(const struct sitl_input &input, Vector3f &rot_accel, Vector3f &body_accel);
+    // AKM: adding the calculate location function 
+        /* update location from position */
+    //void update_position(void);
+    //double distance_to_home;
 };
 
 } // namespace SITL

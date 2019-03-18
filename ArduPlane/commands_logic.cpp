@@ -1033,8 +1033,53 @@ void Plane::do_eight_plane()
 // code: Christoph Sieg:
 void Plane::do_loiter_3d()
 {
+  /*
+    // AKM: Creation of the new reel-out program
+   // ==========================================================================
+   // define the Initial location
+   // define the sphere radius
+   S1_in_S2.S2_loc = home;
+   S1_in_S2.S2_radius_cm = 24000;
+
+   // define the reelout_speed (constant)
+   reelout_speed = 3.0; // m/s
+
+   // start by setting the updating_time = true
+   // so that time_reelout_start has an initial value
+   updating_time = true;
+
+   // what will make updating time false so that the timer can start?
+   // if the plane mode is AWE then we are not updating the time.
+   if (control_mode == LOITER_3D) {
+       updating_time = false;
+
+   }
+
+   // check if the timer has started for the reel-out
+   // if updating time = true: time_reelout_start = current_time
+   // else: leave as before.
+   if (updating_time) {
+       time_reelout_start = AP_HAL::millis();
+   }
+
+   // do the new sphere radius calculation
+   // again, if updating_time is false it means that we should be reeling-out
+   // calculate the elapsed time = simulation time from HAL - time_reelout_start
+   // calculate the reelout_distance
+   // calculate the new sphere radius
+   if (!updating_time) {
+       time_reelout_elapsed = AP_HAL::millis() - time_reelout_start;
+       reelout_distance = reelout_speed * time_reelout_elapsed * 0.001; // meters
+       S1_in_S2.S2_radius_cm = S1_in_S2.S2_radius_cm + reelout_distance * 100.0; // cm
+   }
+   hal.console->println("Sphere Radius: ");
+   // ==========================================================================
+   // AKM: end of reel-out program!
+   */
+
+   // defined above
     S1_in_S2.S2_loc = home;
-    S1_in_S2.S2_radius_cm = 24000;
+    S1_in_S2.S2_radius_cm = 10000;
     S1_in_S2.theta_rho_deg = 20.0f;
     S1_in_S2.S1_radius_cm = S1_in_S2.S2_radius_cm * sinf(radians(S1_in_S2.theta_rho_deg));
     S1_in_S2.azimuth_deg = 0.0f;
@@ -1189,11 +1234,51 @@ void Plane::do_loiter_3d()
 void Plane::do_eight_sphere()
 {
     eight_in_S2.S2_loc = home; // location of the center of the S2
-    eight_in_S2.S2_radius_cm = 15000; // radius of the S2 in cm
+    eight_in_S2.S2_radius_cm = 24000; // radius of the S2 in cm
+
+
+     // AKM: Creation of the new reel-out program
+   // ==========================================================================
+   // define the Initial location
+   // define the sphere radius
+
+    // define the reelout_speed (constant)
+    //reelout_speed = 0.0; // m/s
+
+    // start by setting the updating_time = true
+    // so that time_reelout_start has an initial value
+    //updating_time = true;
+
+    // what will make updating time false so that the timer can start?
+    // if the plane mode is AWE then we are not updating the time.
+    //if (control_mode == EIGHT_SPHERE) {
+    //    updating_time = false;
+    //}
+
+    // check if the timer has started for the reel-out
+    // if updating time = true: time_reelout_start = current_time
+    // else: leave as before.
+    //if (updating_time) {
+    //    time_reelout_start = AP_HAL::millis();
+    //}
+
+    // do the new sphere radius calculation
+    // again, if updating_time is false it means that we should be reeling-out
+    // calculate the elapsed time = simulation time from HAL - time_reelout_start
+    // calculate the reelout_distance
+    // calculate the new sphere radius
+    //if (!updating_time) {
+    //    time_reelout_elapsed = AP_HAL::millis() - time_reelout_start;
+    //    reelout_distance = reelout_speed * time_reelout_elapsed * 0.001; // meters
+    //    eight_in_S2.S2_radius_cm = eight_in_S2.S2_radius_cm + reelout_distance * 100.0; // cm
+    //}
+    // ==========================================================================
+    // AKM: end of reel-out program!
+
     eight_in_S2.theta_c_deg = 45.0f; // half of the angle between the centers of the two turning circle segments, range: [0,90] degrees
     eight_in_S2.theta_r_deg = 15.f; // opening angle of the cone with tip at S2_loc and base given by the turning circle, range: [0,90-theta_c_deg] degrees in order to guarantee that the sweeping angle between the two apices is less than 180 deg.
     eight_in_S2.azimuth_deg = 0.0f; // azimuth angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range: [0,360]
-    eight_in_S2.elevation_deg = 90.0f; // inclination angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range [0,90]
+    eight_in_S2.elevation_deg = 0.0f; // inclination angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range [0,90]
     eight_in_S2.orientation = 1; // orientation of the figure-eight pattern: +1: downwards flight on geodesic, upwards flight on turning circle segments
                                  //                                          -1: upwards flight on geodesic, downwards flight on turning circle segments
 

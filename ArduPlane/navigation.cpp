@@ -453,6 +453,64 @@ void Plane::update_eight_plane()
 
 void Plane::update_loiter_3d()
 {
+    // AKM begin
+    auto_state.vtol_mode = false;
+
+        // AKM: Creation of the new reel-out program
+   // ==========================================================================
+   // define the Initial location
+   // define the sphere radius
+   S1_in_S2.S2_loc = home;
+   S1_in_S2.S2_radius_cm = 10000;
+
+   // define the reelout_speed (constant)
+   reelout_speed = 1.0; // m/s
+
+   // start by setting the updating_time = true
+   // so that time_reelout_start has an initial value
+   updating_time = true;
+
+   // what will make updating time false so that the timer can start?
+   // if the plane mode is AWE then we are not updating the time.
+   if (control_mode == LOITER_3D) {
+       updating_time = false;
+
+   }
+
+   // uint32_t time_reelout_start_ms;
+
+   // check if the timer has started for the reel-out
+   // if updating time = true: time_reelout_start = current_time
+   // else: leave as before.
+   if (updating_time) {
+       time_reelout_start_ms = AP_HAL::millis();
+   }
+
+   // do the new sphere radius calculation
+   // again, if updating_time is false it means that we should be reeling-out
+   // calculate the elapsed time = simulation time from HAL - time_reelout_start
+   // calculate the reelout_distance
+   // calculate the new sphere radius
+  // if (!updating_time) {
+   time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+   reelout_distance = reelout_speed * time_reelout_elapsed_s;                   // meters
+   S1_in_S2.S2_radius_cm = S1_in_S2.S2_radius_cm + reelout_distance * 100.0;            // cm
+  // }
+   hal.console->println("time elapsed: ");
+   hal.console->printf("%f", time_reelout_elapsed_s);
+
+   hal.console->println("reel-out distance: ");
+   hal.console->printf("%c", S1_in_S2.S2_radius_cm);
+
+   //hal.console->println("Sphere Radius: ");
+   //hal.console->printf("%03" PRId32 "\n", S1_in_S2.S2_radius_cm);
+   // ==========================================================================
+   // AKM: end of reel-out program!
+
+
+
+    // AKM end
+
     // code: Christoph Sieg
     //nav_controller->update_loiter_3d(S1_in_S2.S1_loc, S1_in_S2.S2_loc, S1_in_S2.S2_radius_cm, S1_in_S2.distance_cm, S1_in_S2.orientation, S1_in_S2.aircraft_posS2center, S1_in_S2.aircraft_vel, S1_in_S2.desired_loc);
 //    hal.console->print("S2_loc: ");
@@ -476,6 +534,14 @@ void Plane::update_loiter_3d()
     //int8_t array[2] = {0, 1};
     //hal.console->print("array: ");
     //hal.console->print(array[0]);
+
+
+
+
+
+
+
+
     nav_controller->update_loiter_3d(S1_in_S2.S2_loc, S1_in_S2.ercv, S1_in_S2.S2_radius_cm, S1_in_S2.theta_rho_deg, S1_in_S2.orientation, S1_in_S2.aircraft_loc, S1_in_S2.aircraft_vel, S1_in_S2.desired_loc);
     //    nav_controller->update_loiter_3d(S1_in_S2.S2_loc, Vector3f(0,0,-1), S1_in_S2.S2_radius_cm, S1_in_S2.theta_rho_deg, S1_in_S2.orientation, S1_in_S2.aircraft_loc, S1_in_S2.aircraft_vel, S1_in_S2.desired_loc);
 
@@ -511,7 +577,9 @@ void Plane::update_loiter_3d()
 
 // code: Christoph Sieg
 void Plane::update_eight_sphere() {
-
+// AKM
+    auto_state.vtol_mode = false;
+// AKM end
     //    //nav_controller->update_loiter_3d(eight_in_S2.S2_loc, eight_in_S2.segments_ercv[eight_in_S2.current_segment], eight_in_S2.S2_radius_cm, eight_in_S2.segments_theta_r[eight_in_S2.current_segment], eight_in_S2.segments_orientation[eight_in_S2.current_segment], eight_in_S2.aircraft_posccenter, eight_in_S2.aircraft_vel, eight_in_S2.desired_loc);
     Vector3f current_ercv = eight_in_S2.current_ercv();
     int32_t current_theta_r = eight_in_S2.current_theta_r();
