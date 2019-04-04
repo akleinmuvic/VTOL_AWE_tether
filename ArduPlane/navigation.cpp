@@ -456,16 +456,72 @@ void Plane::update_loiter_3d()
     // AKM begin
     auto_state.vtol_mode = false;
 
-        // AKM: Creation of the new reel-out program
+        // AKM: Creation of the new pumping mode program
    // ==========================================================================
-   // define the Initial location
-   // define the sphere radius
-   S1_in_S2.S2_loc = home;
-   S1_in_S2.S2_radius_cm = 10000;
+   // define the Initial location (taken from commands_logic.cpp)
+   // define the sphere radius (taken from commands_logic.cpp)
+   //S1_in_S2.S2_loc = home;
+  // S1_in_S2.S2_radius_cm = 10000;
 
-   // define the reelout_speed (constant)
-   reelout_speed = 1.0; // m/s
 
+   // set the tether distance constraints
+   radius_min = 10000;
+   radius_max = 30000;
+   
+   // define the reeling speeds (constant)
+   reelout_speed = 3.0; // m/s
+   reelin_speed = 10.0; // m/s
+
+   // set initial timing
+   updating_time = true;
+   // if the plane mode is AWE then we are not updating the time.
+   if (control_mode == LOITER_3D) {
+       updating_time = false;
+   }
+   //the timer stops updating when mode 38 is set,
+   if (updating_time) {
+       time_reelout_start_ms = AP_HAL::millis();
+       time_reelin_start_ms = AP_HAL::millis();
+   }
+
+   // Where are we?
+   // 1) Below R_min
+   if (S1_in_S2.S2_radius_cm <= radius_min) {
+       radius_min_reached = true;
+       radius_max_reached = false;
+   }
+   // 2) Above R_max
+   else if (S1_in_S2.S2_radius_cm >= radius_max) {
+       radius_min_reached = false;
+       radius_max_reached = true;
+   }
+
+   // which direction are we going?
+   if (radius_min_reached == true && radius_max_reached == false) {
+       // we are reeling out
+       time_reelin_start_ms = AP_HAL::millis();
+       time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+       S1_in_S2.S2_radius_cm = radius_min + (reelout_speed * time_reelout_elapsed_s * 100);
+       hal.console->println("Reeling_out ");
+       //hal.console->println(S1_in_S2.S2_radius_cm);
+   }
+   else if (radius_min_reached == false && radius_max_reached == true) {
+       // we are reeling in
+       time_reelout_start_ms = AP_HAL::millis();
+       time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+       S1_in_S2.S2_radius_cm = radius_max - (reelin_speed * time_reelin_elapsed_s * 100);
+       hal.console->println("Reeling_in ");
+       //hal.console->println(S1_in_S2.S2_radius_cm);
+   }
+
+   // add condition so the radius addition is large enough to get us out of the minimum or maximum hole
+
+
+
+
+
+
+   /*
    // start by setting the updating_time = true
    // so that time_reelout_start has an initial value
    updating_time = true;
@@ -476,8 +532,6 @@ void Plane::update_loiter_3d()
        updating_time = false;
 
    }
-
-   // uint32_t time_reelout_start_ms;
 
    // check if the timer has started for the reel-out
    // if updating time = true: time_reelout_start = current_time
@@ -493,14 +547,97 @@ void Plane::update_loiter_3d()
    // calculate the new sphere radius
   // if (!updating_time) {
    time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
-   reelout_distance = reelout_speed * time_reelout_elapsed_s;                   // meters
-   S1_in_S2.S2_radius_cm = S1_in_S2.S2_radius_cm + reelout_distance * 100.0;            // cm
-  // }
-   hal.console->println("time elapsed: ");
-   hal.console->printf("%f", time_reelout_elapsed_s);
 
-   hal.console->println("reel-out distance: ");
-   hal.console->printf("%c", S1_in_S2.S2_radius_cm);
+   if (S1_in_S2.S2_radius_cm <= radius_min) {
+       min_reached = true;
+       max_reached = false;
+       is_reeling_out = true;
+       is_reeling_in = false;
+
+   }
+   else if (S1_in_S2.S2_radius_cm >= radius_max) {
+       min_reached = false;
+       max_reached = true;
+       is_reeling_in = true;
+       is_reeling_out = false;
+   }
+   */
+/*
+   if (min_reached) {
+       is_reeling_out = true;
+       is_reeling_in = false;
+   }
+   else if (max_reached) {
+       is_reeling_in = true;
+       is_reeling_out = false;
+   }
+
+
+*/
+/*
+
+    // assume reeling out and check if it can still reel-out
+   
+    reelout_distance = reelout_speed * time_reelout_elapsed_s;                   // meters
+    tether_length = S1_in_S2.S2_radius_cm + reelout_distance * 100.0;            // cm
+    updating_reelin_time = true;
+
+
+    // check if the length is smaller than limit, stop reeling out if length is bigger than maximum
+    if (tether_length >= radius_max) {
+        is_reeling_out = false;
+        updating_reelin_time = false;
+    }
+
+    // update the reelin start time equal to the global time if it is reeling out, if is not reeling out the time is set to when the change was made
+    if (updating_reelin_time) {
+        time_reelin_start_ms = AP_HAL::millis();
+    }
+
+    // calculate the distance if it's not reeling out (is reeling in)
+    if (!is_reeling_out) {
+        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+        reelin_distance = reelin_speed * time_reelin_elapsed_s;
+        tether_length = radius_max - reelin_distance;
+        if (tether_length <= radius_min) {
+            is_reeling_out = true;
+
+        }
+    }
+*/
+
+    
+/*
+
+    if (tether_length <= radius_max) {
+        is_reeling_out = true;
+        time_reelin_start_ms = AP_HAL::millis();
+        S1_in_S2.S2_radius_cm = tether_length
+       }
+    else if (tether_length >= radius_max) {
+        is_reeling_in = true;
+        is_reeling_out = false;
+        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+        reelin_distance = reelin_speed * time_reelin_elapsed_s;
+        S1_in_S2.S2_radius_cm = radius_max - reelin_distance;
+    }
+    else if (is_reeling_in) {
+        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+        reelin_distance = reelin_speed * time_reelin_elapsed_s;
+        tether_length = radius_max - reelin_distance;
+    }
+    else if (tether_length <= radius_min) {
+        is_reeling_in = false;
+        is_reeling_out = true;
+    }
+
+    */
+
+ //  hal.console->println("time elapsed: ");
+ //  hal.console->printf("%f", time_reelout_elapsed_s);
+
+//   hal.console->println("reel-out distance: ");
+//   hal.console->printf("%f", S1_in_S2.S2_radius_cm);
 
    //hal.console->println("Sphere Radius: ");
    //hal.console->printf("%03" PRId32 "\n", S1_in_S2.S2_radius_cm);
@@ -614,6 +751,66 @@ void Plane::update_eight_sphere() {
     //
     //    hal.console->print("eight_in_S2.current_orientation() :");
     //    hal.console->println(current_orientation);
+
+
+            // AKM: Creation of the new pumping mode program
+   // ==========================================================================
+   // define the Initial location (taken from commands_logic.cpp)
+   // define the sphere radius (taken from commands_logic.cpp)
+   //S1_in_S2.S2_loc = home;
+  // eight_in_S2.S2_radius_cm = 15000;
+    /*
+   // set the tether distance constraints
+    radius_min = 10000;
+    radius_max = 30000;
+
+    // define the reeling speeds (constant)
+    reelout_speed = 3.0; // m/s
+    reelin_speed = 10.0; // m/s
+
+    // set initial timing
+    updating_time = true;
+    // if the plane mode is AWE then we are not updating the time.
+    if (control_mode == EIGHT_PLANE) {
+        updating_time = false;
+    }
+    //the timer stops updating when mode 38 is set,
+    if (updating_time) {
+        time_reelout_start_ms = AP_HAL::millis();
+        time_reelin_start_ms = AP_HAL::millis();
+    }
+
+    // Where are we?
+    // 1) Below R_min
+    if (eight_in_S2.S2_radius_cm <= radius_min) {
+        radius_min_reached = true;
+        radius_max_reached = false;
+    }
+    // 2) Above R_max
+    else if (eight_in_S2.S2_radius_cm >= radius_max) {
+        radius_min_reached = false;
+        radius_max_reached = true;
+    }
+
+    // which direction are we going?
+    if (radius_min_reached == true && radius_max_reached == false) {
+        // we are reeling out
+        time_reelin_start_ms = AP_HAL::millis();
+        time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+        eight_in_S2.S2_radius_cm = radius_min + (reelout_speed * time_reelout_elapsed_s * 100);
+        hal.console->println("Reeling_out ");
+    }
+    else if (radius_min_reached == false && radius_max_reached == true) {
+        // we are reeling in
+        time_reelout_start_ms = AP_HAL::millis();
+        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+        eight_in_S2.S2_radius_cm = radius_max - (reelin_speed * time_reelin_elapsed_s * 100);
+        hal.console->println("Reeling_in ");
+    }
+
+    */
+
+
 
 //        hal.console->println("before loiter_3d: ");
 //        hal.console->println(micros());

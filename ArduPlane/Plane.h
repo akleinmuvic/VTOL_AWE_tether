@@ -2108,12 +2108,25 @@ private:
     //AKM: is reeling out?
     bool reeling_out;
     //AKM: define reeling out time start
+    bool radius_min_reached;
+    bool radius_max_reached;
     double time_reelout_start_ms;
     double time_reelout_elapsed_s;
+    double time_reelin_elapsed_s;
+    double time_reelin_start_ms;
     //AKM: define reel-out speed
     double reelout_speed;
     //AKM: reel-out distance
+    double tether_length;
+    double reelin_speed;
+    double radius_min;
+    double radius_max;
+    bool is_reeling_out;
+    bool is_reeling_in;
+    bool max_reached;
+    bool min_reached;
     double reelout_distance;
+    double reelin_distance;
     bool verify_loiter_heading(bool init);
     void exit_mission_callback();
     void mavlink_delay(uint32_t ms);

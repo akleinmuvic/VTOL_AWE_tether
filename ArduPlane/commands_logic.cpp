@@ -1234,7 +1234,7 @@ void Plane::do_loiter_3d()
 void Plane::do_eight_sphere()
 {
     eight_in_S2.S2_loc = home; // location of the center of the S2
-    eight_in_S2.S2_radius_cm = 24000; // radius of the S2 in cm
+    eight_in_S2.S2_radius_cm = 25000; // radius of the S2 in cm
 
 
      // AKM: Creation of the new reel-out program
@@ -1278,7 +1278,7 @@ void Plane::do_eight_sphere()
     eight_in_S2.theta_c_deg = 45.0f; // half of the angle between the centers of the two turning circle segments, range: [0,90] degrees
     eight_in_S2.theta_r_deg = 15.f; // opening angle of the cone with tip at S2_loc and base given by the turning circle, range: [0,90-theta_c_deg] degrees in order to guarantee that the sweeping angle between the two apices is less than 180 deg.
     eight_in_S2.azimuth_deg = 0.0f; // azimuth angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range: [0,360]
-    eight_in_S2.elevation_deg = 0.0f; // inclination angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range [0,90]
+    eight_in_S2.elevation_deg = 90.0f; // inclination angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range [0,90]
     eight_in_S2.orientation = 1; // orientation of the figure-eight pattern: +1: downwards flight on geodesic, upwards flight on turning circle segments
                                  //                                          -1: upwards flight on geodesic, downwards flight on turning circle segments
 

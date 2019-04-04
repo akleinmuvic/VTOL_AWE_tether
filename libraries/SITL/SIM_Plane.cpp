@@ -354,13 +354,19 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     // =======================================================================================================================
     // AKM: add force here in z direction (must be in the home direction!)
     // create if loop that activates tether force if distance_to_home > R_sphere.
+        // =======================================================================================================================
 
     // extract the Euler angles
     float r, p, y;
     dcm.to_euler(&r, &p, &y);
 
+    // =======================================================================================================================
+// AKM: create the variable tether length constraint (look in Navigation.cpp)
+
+
+
     // define sphere radius and spring elasticity constant
-    double R_sphere = 10000.0; // meters. Read from Commands_Logic.cpp
+    double R_sphere = 50.0; // meters. Read from Commands_Logic.cpp
 
     // how to calculate the tether constant of elasticity
     /*
@@ -374,11 +380,22 @@ K_tether = E_tether * A_tether / R_sphere;
 
     double K_tether = 700.0;
     double distance_to_home = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+    double F_tether_constant = 20.0; // in Newtons. Use this for constant tether force
 
+
+    // option 1: use tether model F= K*x only when plane distance to home is bigger than defined sphere radius
     // calculate the forces in NED coordinates
+    /*
     double F_tether_NED_x = K_tether * (distance_to_home - R_sphere)*(position.x / distance_to_home);
     double F_tether_NED_y = K_tether * (distance_to_home - R_sphere)*(position.y / distance_to_home);
     double F_tether_NED_z = K_tether * (distance_to_home - R_sphere)*(position.z / distance_to_home);
+    */
+
+    // option 2: Use constant tether force pointing from the plane to the home location.
+    double F_tether_NED_x = F_tether_constant *(position.x / distance_to_home);
+    double F_tether_NED_y = F_tether_constant *(position.y / distance_to_home);
+    double F_tether_NED_z = F_tether_constant *(position.z / distance_to_home);
+
 
     // rotate the forces to body axes
     double F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
