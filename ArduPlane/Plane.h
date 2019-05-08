@@ -2101,6 +2101,7 @@ private:
     void do_eight_plane();
     void do_loiter_3d();
     void do_eight_sphere();
+    double Position_from_AHRS;
     //AKM: add assisted_flight bool
     bool assisted_flight;
     //AKM: updating time bool
@@ -2117,6 +2118,7 @@ private:
     //AKM: define reel-out speed
     double reelout_speed;
     //AKM: reel-out distance
+    double initialization_distance;
     double tether_length;
     double reelin_speed;
     double radius_min;

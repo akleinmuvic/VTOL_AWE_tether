@@ -323,7 +323,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         elevator = (elevon_left+elevon_right)/2;
         rudder = fabsf(dspoiler1_right - dspoiler2_right)/2 - fabsf(dspoiler1_left - dspoiler2_left)/2;
     }
-    //printf("Aileron: %.1f elevator: %.1f rudder: %.1f\n", aileron, elevator, rudder);
+    printf("Aileron: %.1f elevator: %.1f rudder: %.1f\n", aileron, elevator, rudder);
 
     if (reverse_thrust) {
         throttle = filtered_servo_angle(input, 2);
@@ -362,55 +362,224 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
     // =======================================================================================================================
 // AKM: create the variable tether length constraint (look in Navigation.cpp)
+    /*
+     // OPTION 1: PUMPING MODE, CONSTANT REEL SPEED
+    // ^^^^^^^^^^^^^^^^^^^^^^
+    // initialization distance, replaces the control_mode set initializer 
+    initilization_distance = 20.0; //meters
+    // define the minimun and maximum radius
+    radius_min = 50; // meters, make sure this is the same as Navigation.cpp
+    radius_max = 300; // meters.
+    // define the reeling speeds (constant)
+    reelout_speed = 1.0; // m/s
+    reelin_speed = 1.0; // m/s
+    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+    // set initial timing
+    updating_time = true;
+    // if the plane mode is farther than defined distance, then we are not updating time
+    if (X >= initilization_distance) {
+        updating_time = false;
+    }
+    //the timer stops updating when X pass the initilization distance,
+    if (updating_time) {
+        time_reelout_start_ms = AP_HAL::millis();
+        time_reelin_start_ms = AP_HAL::millis();
+        X_0 = X;  //winch is reeling out with the plane until reaching the initialization distance
+    }
+    // change position verification from X to X_0
+   // Where are we?
+   // 1) Below R_min
+    if (X_0 < radius_min) {
+        radius_min_reached = true;
+        radius_max_reached = false;
+    }
+    // 2) Above R_max
+    else if (X_0 >= radius_max) {
+        radius_min_reached = false;
+        radius_max_reached = true;
+    }
+    // which direction are we going?
+    if (radius_min_reached == true && radius_max_reached == false) {
+        // we are reeling out
+        time_reelin_start_ms = AP_HAL::millis();
+        time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+        X_0 = radius_min + (reelout_speed * time_reelout_elapsed_s); // in meters!
+    }
+    else if (radius_min_reached == false && radius_max_reached == true) {
+        // we are reeling in
+        time_reelout_start_ms = AP_HAL::millis();
+        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+        X_0 = radius_max - (reelin_speed * time_reelin_elapsed_s); // in meters!
+    }
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     // COMMENT OUT HERE THE PUMPING MODE
+    */
+
+    /*
+    // OPTION 2: FIXED TETHER LENGTH
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+    //X_0 = 200; // meters, this must be equal to S1_in_S2.S2_radius_cm in Commands_logic.cpp
+    X_0 = 200 - 80; // this is the R_sphere minus the oscillation of the plane distance with K=0
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    // COMMENT OUT HERE THE FIXED TETHER LENGRTH
+    */
 
 
-
-    // define sphere radius and spring elasticity constant
-    double R_sphere = 50.0; // meters. Read from Commands_Logic.cpp
 
     // how to calculate the tether constant of elasticity
-    /*
+/*
 R_sphere = 240; %m
 E_tether = 116E9; % Pa
 d_tether = 1.6E-3;  % m
 A_tether = pi* d_tether^2 /4; %m^2
 K_tether = E_tether * A_tether / R_sphere;
     */
-
-
-    double K_tether = 700.0;
-    double distance_to_home = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
-    double F_tether_constant = 20.0; // in Newtons. Use this for constant tether force
-
-
-    // option 1: use tether model F= K*x only when plane distance to home is bigger than defined sphere radius
-    // calculate the forces in NED coordinates
     /*
-    double F_tether_NED_x = K_tether * (distance_to_home - R_sphere)*(position.x / distance_to_home);
-    double F_tether_NED_y = K_tether * (distance_to_home - R_sphere)*(position.y / distance_to_home);
-    double F_tether_NED_z = K_tether * (distance_to_home - R_sphere)*(position.z / distance_to_home);
+    if (X_0 >= radius_min) {
+        K_tether = 116000000000 * 0.000002 / X_0;
+    }
+    else {
+        K_tether = 116000000000 * 0.000002 / radius_min;
+    }
     */
 
-    // option 2: Use constant tether force pointing from the plane to the home location.
-    double F_tether_NED_x = F_tether_constant *(position.x / distance_to_home);
-    double F_tether_NED_y = F_tether_constant *(position.y / distance_to_home);
-    double F_tether_NED_z = F_tether_constant *(position.z / distance_to_home);
+    /*
+    K_tether = 0.70;
 
+    // define sphere radius and spring elasticity constant
+    //double R_sphere = 50.0; // meters. Read from Commands_Logic.cpp
+
+    //double K_tether = 700.0;
+    //double distance_to_home = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+
+    // option 1:
+    // use tether model F= K*x only when plane distance to home is bigger than defined sphere radius
+    // calculate the forces in NED coordinates
+
+    double F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
+    double F_tether_NED_y = K_tether * (X - X_0) *(position.y / X);
+    double F_tether_NED_z = K_tether * (X - X_0) *(position.z / X);
+
+    /
+    // option 2:
+    // Use constant tether force pointing from the plane to the home location.
+    //double F_tether_constant = 20.0; // in Newtons. Use this for constant tether force
+    
+    //double F_tether_NED_x = F_tether_constant *(position.x / distance_to_home);
+    //double F_tether_NED_y = F_tether_constant *(position.y / distance_to_home);
+    //double F_tether_NED_z = F_tether_constant *(position.z / distance_to_home);
+    
 
     // rotate the forces to body axes
     double F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
     double F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
     double F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
 
-    if (distance_to_home > R_sphere){
+    if (X > X_0){
         force.x = force.x - F_tether_BODY_x; 
         force.y = force.y - F_tether_BODY_y;
         force.z = force.z - F_tether_BODY_z;
     
     }
+
+
+
+
+
+
     // =======================================================================================================================
     // AKM: end
-    
+    */
+
+    // OPTION 3: WINCH CONTROL: DRAG MODE
+
+    // set initial timing
+    updating_time = true;
+
+    // calculate distance to home (X)
+    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+
+    // if the plane mode is farther than defined distance, then we are not updating time
+    if (X >= initilization_distance) {
+        updating_time = false;
+    }
+//the timer stops updating when X pass the initilization distance,
+    if (updating_time) {
+        update_time = AP_HAL::millis();
+        X_0 = X;  //winch is reeling out with the plane until reaching the initialization distance
+        Winch_omega = 0;
+    }
+
+    // calculate tether forces in NED coordinates
+    K_tether = 0.7;
+    double F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
+    double F_tether_NED_y = K_tether * (X - X_0) *(position.y / X);
+    double F_tether_NED_z = K_tether * (X - X_0) *(position.z / X);
+
+    // rotate the forces to body axes
+    double F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+    double F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+    double F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+
+
+    // calculate the total tether force from the x,y,z tether forces in NED direction
+if (X > X_0) {
+    F_tether_total = pow(pow(F_tether_NED_x, 2) + pow(F_tether_NED_y, 2) + pow(F_tether_NED_z, 2), 0.5);
+    // add tether forces to body axes
+    force.x = force.x - F_tether_BODY_x;
+    force.y = force.y - F_tether_BODY_y;
+    force.z = force.z - F_tether_BODY_z;
+}
+else
+{
+    F_tether_total = 0;
+}
+ 
+    // calculate the tension range from the percentage (%) of maximum force
+    F_tether_max = 40.0;
+    F_tether_perc = F_tether_total * 100 / F_tether_max;
+    F_tether_zero = 0.0;
+
+    // determine the reeling angular acceleration
+    if (F_tether_perc <= F_tether_zero) {
+        Winch_alpha = -750; // change this for realistic value
+    }
+    else if (F_tether_perc > 0.0 && F_tether_perc <= 35.0) {
+        Winch_alpha = 0;
+    }
+    else if (F_tether_perc > 35.0 && F_tether_perc <= 70.0) {
+        Winch_alpha = 750.0;
+    }
+    else if (F_tether_perc > 70.0) {
+        Winch_alpha = 1500.0;
+    }
+
+
+    // calculate the new output reeling speed
+    Winch_radius = 0.075;
+    Winch_omega_max = 377.0;
+    delta_time_s = (AP_HAL::millis() - update_time) * 0.001; // need to set an initial update_time = now before starting to reel
+    Winch_omega = Winch_alpha * delta_time_s + Winch_omega;
+
+    if (Winch_omega >= Winch_omega_max) {
+        Winch_omega = Winch_omega_max;
+    }
+    else if (Winch_omega <= -Winch_omega_max) {
+        Winch_omega = -Winch_omega_max;
+    }
+
+
+    Reeling_speed = Winch_omega * Winch_radius;
+    X_0 = X_0 + Reeling_speed * delta_time_s;
+
+    update_time = AP_HAL::millis();
+
+
+    // END OF WINCH MODEL: DRAG MODE
+    //=============================================================================
+
+
 
 
     rot_accel = getTorque(aileron, elevator, rudder, thrust, force);

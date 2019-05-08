@@ -1,4 +1,5 @@
 #include "Plane.h"
+// #include <GCS_MAVLink/GCS.h>
 
 // set the nav_controller pointer to the right controller
 void Plane::set_nav_controller(void)
@@ -456,8 +457,14 @@ void Plane::update_loiter_3d()
     // AKM begin
     auto_state.vtol_mode = false;
 
+
+ /* 
+ // Comment HERE
+    
+
+
         // AKM: Creation of the new pumping mode program
-   // ==========================================================================
+   // =========================================================================================================
    // define the Initial location (taken from commands_logic.cpp)
    // define the sphere radius (taken from commands_logic.cpp)
    //S1_in_S2.S2_loc = home;
@@ -466,11 +473,13 @@ void Plane::update_loiter_3d()
 
    // set the tether distance constraints
    radius_min = 10000;
-   radius_max = 30000;
+   radius_max = 35000;
    
    // define the reeling speeds (constant)
-   reelout_speed = 3.0; // m/s
-   reelin_speed = 10.0; // m/s
+   reelout_speed = 1.0; // m/s
+   reelin_speed = 3.0; // m/s
+
+   //initialization_distance = 20.0; //meters
 
    // set initial timing
    updating_time = true;
@@ -514,12 +523,32 @@ void Plane::update_loiter_3d()
        //hal.console->println(S1_in_S2.S2_radius_cm);
    }
 
+
+
+  // hal.console->printf("What you want to print \n"); // THIS WORKS, just text no variable
+  // Position_from_AHRS = ahrs.get_position(current_loc);
+  // hal.console->print("position from AHRS ");
+  // hal.console->print (Position_from_AHRS);
+   
+
+    // THIS IS FOR SENDING MESSAGES TO THE GROUND CONTROL STATION
+   //static uint8_t counter = 0;
+   //counter++;
+   //if (counter > 50) {
+   //    counter = 0;
+   //    gcs().send_text(MAV_SEVERITY_CRITICAL, "Radius: ",(double)radius );
+   //}
+   
+   
+    // undomment HERE
+
+  */
+
+
    // add condition so the radius addition is large enough to get us out of the minimum or maximum hole
 
 
-
-
-
+    //============================================================================================================================
 
    /*
    // start by setting the updating_time = true

@@ -44,6 +44,43 @@ protected:
     const float air_density = 1.225; // kg/m^3 at sea level, ISA conditions
     float angle_of_attack;
     float beta;
+    double X; //
+    double X_0; // 
+    double initilization_distance; //
+    double K_tether; //
+
+    bool updating_time;
+    //AKM: is reeling out?
+    bool reeling_out;
+    //AKM: define reeling out time start
+    bool radius_min_reached;//
+    bool radius_max_reached;//
+    double time_reelout_start_ms; //
+    double time_reelout_elapsed_s; //
+    double time_reelin_elapsed_s; //
+    double time_reelin_start_ms; //
+    //AKM: define reel-out speed
+    double reelout_speed; //
+    //AKM: reel-out distance
+    double reelin_speed; //
+    double radius_min; //
+    double radius_max; //
+    double F_tether_total;
+    double F_tether_max;
+    double F_tether_perc;
+    double Winch_alpha;
+    double Winch_omega;
+    double update_time;
+    double delta_time_s;
+    double Reeling_speed;
+    double Winch_radius;
+    double Reeling_distance;
+    double F_tether_zero;
+    double Winch_omega_max;
+
+
+
+
 
     struct {
         // from last_letter skywalker_2013/aerodynamics.yaml
