@@ -481,6 +481,7 @@ void Plane::set_mode(enum FlightMode mode, mode_reason_t reason)
     case EIGHT_SPHERE:
         auto_throttle_mode = true;
         auto_navigation_mode = true;
+        auto_state.vtol_mode = false;
         do_eight_sphere();
         break;
 

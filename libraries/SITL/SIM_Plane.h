@@ -67,6 +67,8 @@ protected:
     double radius_max; //
     double F_tether_total;
     double F_tether_max;
+    double F_tether_int;
+    double F_tether_min;
     double F_tether_perc;
     double Winch_alpha;
     double Winch_omega;
@@ -77,7 +79,34 @@ protected:
     double Reeling_distance;
     double F_tether_zero;
     double Winch_omega_max;
+    // for catenary tether model
+    double R_sphere;
+    double drag_tether;
+    double weight_tether;
+    double load_tether;
+    double sag_tether;
+    double Rx_tether;
+    double E_times_area;
 
+    double F_tether_NED_x;
+    double F_tether_NED_y;
+    double F_tether_NED_z;
+    double F_tether_BODY_x;
+    double F_tether_BODY_y;
+    double F_tether_BODY_z;
+
+    double X_0_min;
+    double X_0_max;
+    double C_4;
+    double Inertia_motor;// motor inertia
+    double Torque_rated; // rated torque
+    double b_motor;// motor viscous friction
+    double winch_gain; // multiplies omega
+    double time_wait;
+    double delta_time_delay;
+    double m_omega;
+    double limit_omega;
+    double X_0_prev;
 
 
 

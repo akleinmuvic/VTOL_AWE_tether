@@ -904,12 +904,12 @@ void Plane::do_loiter_ellipse()
 {
     ellipse.center_loc = home;
     //ellipse.maxradius_cm = 15588.5;
-    ellipse.maxradius_cm = 24000;
+    ellipse.maxradius_cm = 18000;
     //ellipse.minmaxratio = cosf(radians(60));
-    ellipse.minmaxratio = cosf(radians(80));
+    ellipse.minmaxratio = cosf(radians(45));
     ellipse.azimuth_deg = 0; // azimuth of the larger principal axis from the north direction
     ellipse.orientation = -1;
-    ellipse.height_cm = 8000;
+    ellipse.height_cm = 9000;
 
     ellipse.center_loc.alt = ellipse.center_loc.alt + ellipse.height_cm;
     next_WP_loc = ellipse.center_loc;
@@ -918,9 +918,9 @@ void Plane::do_loiter_ellipse()
 void Plane::do_eight_plane()
 {
     eight_in_R2.center_loc = home; // location of the center point on the ground
-    eight_in_R2.d_c_cm = 20000; // horizontal distance from crossing point to turning point
-    eight_in_R2.S1_radius_cm = 10000; // radius of the turning circles
-    eight_in_R2.height_cm = 10000; // height of the pattern above the center point
+    eight_in_R2.d_c_cm = 18000; // horizontal distance from crossing point to turning point
+    eight_in_R2.S1_radius_cm = 9000; // radius of the turning circles
+    eight_in_R2.height_cm = 9000; // height of the pattern above the center point
     eight_in_R2.azimuth_deg = 0.0f;
     eight_in_R2.orientation = 1;     // orientation of the figure-eight pattern
 
@@ -1079,12 +1079,12 @@ void Plane::do_loiter_3d()
 
    // defined above
     S1_in_S2.S2_loc = home;
-    S1_in_S2.S2_radius_cm = 20000;
-    S1_in_S2.theta_rho_deg = 20.0f;
+    S1_in_S2.S2_radius_cm = 10000;
+    S1_in_S2.theta_rho_deg = 30.0f;
     S1_in_S2.S1_radius_cm = S1_in_S2.S2_radius_cm * sinf(radians(S1_in_S2.theta_rho_deg));
     S1_in_S2.azimuth_deg = 0.0f;
     S1_in_S2.elevation_deg = 30.0f;
-    S1_in_S2.orientation = 1;
+    S1_in_S2.orientation = -1;
 
     float theta = 90.0f - S1_in_S2.elevation_deg;
 
@@ -1234,7 +1234,7 @@ void Plane::do_loiter_3d()
 void Plane::do_eight_sphere()
 {
     eight_in_S2.S2_loc = home; // location of the center of the S2
-    eight_in_S2.S2_radius_cm = 25000; // radius of the S2 in cm
+    eight_in_S2.S2_radius_cm = 36000; // radius of the S2 in cm
 
 
      // AKM: Creation of the new reel-out program
@@ -1276,9 +1276,9 @@ void Plane::do_eight_sphere()
     // AKM: end of reel-out program!
 
     eight_in_S2.theta_c_deg = 45.0f; // half of the angle between the centers of the two turning circle segments, range: [0,90] degrees
-    eight_in_S2.theta_r_deg = 15.f; // opening angle of the cone with tip at S2_loc and base given by the turning circle, range: [0,90-theta_c_deg] degrees in order to guarantee that the sweeping angle between the two apices is less than 180 deg.
+    eight_in_S2.theta_r_deg = 15.0f; // opening angle of the cone with tip at S2_loc and base given by the turning circle, range: [0,90-theta_c_deg] degrees in order to guarantee that the sweeping angle between the two apices is less than 180 deg.
     eight_in_S2.azimuth_deg = 0.0f; // azimuth angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range: [0,360]
-    eight_in_S2.elevation_deg = 90.0f; // inclination angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range [0,90]
+    eight_in_S2.elevation_deg = 75.0f; // inclination angle of the vector pointing from S2_loc to the crossing point of the figure-eight pattern, range [0,90]
     eight_in_S2.orientation = 1; // orientation of the figure-eight pattern: +1: downwards flight on geodesic, upwards flight on turning circle segments
                                  //                                          -1: upwards flight on geodesic, downwards flight on turning circle segments
 

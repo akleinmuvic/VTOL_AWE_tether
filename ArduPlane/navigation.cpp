@@ -458,9 +458,9 @@ void Plane::update_loiter_3d()
     auto_state.vtol_mode = false;
 
 
- /* 
- // Comment HERE
-    
+  
+ /* // Comment HERE for the latest update of pumping mode!!!
+ 
 
 
         // AKM: Creation of the new pumping mode program
@@ -540,9 +540,9 @@ void Plane::update_loiter_3d()
    //}
    
    
-    // undomment HERE
-
-  */
+  */  // undomment HERE for the latest update for the pumping mode
+    
+  
 
 
    // add condition so the radius addition is large enough to get us out of the minimum or maximum hole
@@ -750,6 +750,97 @@ void Plane::update_eight_sphere() {
     Vector3f current_ercv = eight_in_S2.current_ercv();
     int32_t current_theta_r = eight_in_S2.current_theta_r();
     int8_t current_orientation = eight_in_S2.current_orientation();
+
+
+    // Comment HERE for the latest update of pumping mode!!!
+    /*
+
+
+       // AKM: Creation of the new pumping mode program
+  // =========================================================================================================
+  // define the Initial location (taken from commands_logic.cpp)
+  // define the sphere radius (taken from commands_logic.cpp)
+  //S1_in_S2.S2_loc = home;
+ // S1_in_S2.S2_radius_cm = 10000;
+
+
+  // set the tether distance constraints
+  radius_min = 28000;
+  radius_max = 45000;
+
+  // define the reeling speeds (constant)
+  reelout_speed = 1.0; // m/s
+  reelin_speed = 3.0; // m/s
+
+  //initialization_distance = 20.0; //meters
+
+  // set initial timing
+  updating_time = true;
+  // if the plane mode is AWE then we are not updating the time.
+  if (control_mode == EIGHT_SPHERE) {
+      //(eight_in_S2.current_quadrant == 3){
+      
+      updating_time = false;
+  }
+  //the timer stops updating when mode 38 is set,
+  if (updating_time) {
+      time_reelout_start_ms = AP_HAL::millis();
+      time_reelin_start_ms = AP_HAL::millis();
+  }
+
+  // Where are we?
+  // 1) Below R_min
+  if (eight_in_S2.S2_radius_cm <= radius_min) {
+      radius_min_reached = true;
+      radius_max_reached = false;
+  }
+  // 2) Above R_max
+  else if (eight_in_S2.S2_radius_cm >= radius_max) {
+      radius_min_reached = false;
+      radius_max_reached = true;
+  }
+
+  // which direction are we going?
+  if (radius_min_reached == true && radius_max_reached == false) {
+      // we are reeling out
+      time_reelin_start_ms = AP_HAL::millis();
+      time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+      eight_in_S2.S2_radius_cm = radius_min + (reelout_speed * time_reelout_elapsed_s * 100);
+      hal.console->println("Reeling_out ");
+      //hal.console->println(S1_in_S2.S2_radius_cm);
+  }
+  else if (radius_min_reached == false && radius_max_reached == true) {
+      // we are reeling in
+      time_reelout_start_ms = AP_HAL::millis();
+      time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+      eight_in_S2.S2_radius_cm = radius_max - (reelin_speed * time_reelin_elapsed_s * 100);
+      hal.console->println("Reeling_in ");
+      //hal.console->println(S1_in_S2.S2_radius_cm);
+  }
+
+
+
+ // hal.console->printf("What you want to print \n"); // THIS WORKS, just text no variable
+ // Position_from_AHRS = ahrs.get_position(current_loc);
+ // hal.console->print("position from AHRS ");
+ // hal.console->print (Position_from_AHRS);
+
+
+   // THIS IS FOR SENDING MESSAGES TO THE GROUND CONTROL STATION
+  //static uint8_t counter = 0;
+  //counter++;
+  //if (counter > 50) {
+  //    counter = 0;
+  //    gcs().send_text(MAV_SEVERITY_CRITICAL, "Radius: ",(double)radius );
+  //}
+
+
+   // undomment HERE for the latest update for the pumping mode
+   */
+
+
+
+
 
 
     //    Vector3f current_ercv = eight_in_S2.ercvs[eight_in_S2.current_segment];

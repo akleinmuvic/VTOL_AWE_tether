@@ -362,13 +362,16 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
     // =======================================================================================================================
 // AKM: create the variable tether length constraint (look in Navigation.cpp)
-    /*
-     // OPTION 1: PUMPING MODE, CONSTANT REEL SPEED
+    
+ /*    // OPTION 1: PUMPING MODE, CONSTANT REEL SPEED
     // ^^^^^^^^^^^^^^^^^^^^^^
     // initialization distance, replaces the control_mode set initializer 
     initilization_distance = 20.0; //meters
     // define the minimun and maximum radius
     radius_min = 50; // meters, make sure this is the same as Navigation.cpp
+
+    ??? CHECK THIS OUT! THE RADIUS MIN IS THE X_0 RIGHT AFTER THE INITIALIZATION DISTANCE IS REACHED, RESULTING IN dELTA X VERY BIG!! THEREFORE HIGH LOADS AT X=20
+
     radius_max = 300; // meters.
     // define the reeling speeds (constant)
     reelout_speed = 1.0; // m/s
@@ -411,19 +414,121 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
         X_0 = radius_max - (reelin_speed * time_reelin_elapsed_s); // in meters!
     }
+    
+    if (X > initilization_distance && X < X_0) { // cable model
+        // Tether inclined catenary model
+        drag_tether = 0.5 * 1.225 * (3.1416 * pow(0.0016, 2) / 4) * 0.47 * pow(airspeed / 2, 2);
+        weight_tether = 0.00194 * 9.8 * X;
+        load_tether = drag_tether + (weight_tether * 0.7071);
+        // only if the plane X is smaller than R_sphere, add if condition.
+        sag_tether = pow((3 * X*X_0 - 3 * pow(X, 2)) / 8, 0.5);
+        Rx_tether = load_tether * pow(X, 2) / (8 * sag_tether);
+        // calculate the forces in NED coordinates
+        F_tether_NED_x = Rx_tether * (position.x / X);
+        F_tether_NED_y = Rx_tether * (position.y / X);
+        F_tether_NED_z = Rx_tether * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+    }
+
+    else if (X > X_0) { // spring model 
+        E_times_area = 2; //233230; // Modulus times the area using diameter 1.6mm
+        K_tether = E_times_area / X_0; // function of the distance to home (X)
+        F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
+        F_tether_NED_y = K_tether * (X - X_0) * (position.y / X);
+        F_tether_NED_z = K_tether * (X - X_0) * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+    }
+    else {
+        F_tether_BODY_x = 0;
+        F_tether_BODY_y = 0;
+        F_tether_BODY_z = 0;
+    }
+
+    
+    force.x = force.x - F_tether_BODY_x;
+    force.y = force.y - F_tether_BODY_y;
+    force.z = force.z - F_tether_BODY_z;
+
+
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      // COMMENT OUT HERE THE PUMPING MODE
     */
 
-    /*
+ 
+     //=========================================================================================================================================
     // OPTION 2: FIXED TETHER LENGTH
-    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    //R_sphere = 150; //m same as in Commands_logic.cpp
+    //X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
     //X_0 = 200; // meters, this must be equal to S1_in_S2.S2_radius_cm in Commands_logic.cpp
-    X_0 = 200 - 80; // this is the R_sphere minus the oscillation of the plane distance with K=0
-    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    //X_0 = 50; // this is the R_sphere minus the oscillation of the plane distance with K=0
+    //K_tether = 1; // constant 
+    //K_tether = 0.0087 * X; // variable K as a function of the distance to home (X) 
+    // the maximum is K=0.7 @ L=230m and K=0 @ L=150
+
+    R_sphere = 150; //m length of the tether.
+    X_0 = 30; // where the catenary model starts to make effect
+    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+
+
+
+    
+    if (X > X_0 && X < R_sphere){
+        // Tether inclined catenary model
+        drag_tether = 0.5 * 1.225 * 0.0016*X_0 * 0.47 * pow(airspeed / 2, 2);
+        weight_tether = 0.00194 * 9.8 * X_0;
+        load_tether = drag_tether + (weight_tether * pow(pow(position.x,2)+pow(position.y,2),0.5)/X);
+        // only if the plane X is smaller than R_sphere, add if condition.
+        sag_tether = pow((3 * X*R_sphere - 3 * pow(X, 2)) / 8, 0.5);
+        Rx_tether = load_tether * pow(X, 2) / (8 * sag_tether);
+        // calculate the forces in NED coordinates
+        F_tether_NED_x = Rx_tether * (position.x / X);
+        F_tether_NED_y = Rx_tether * (position.y / X);
+        F_tether_NED_z = Rx_tether * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+    }
+    else if (X > R_sphere) {
+        E_times_area = 233230; // Modulus times the area using diameter 1.6mm
+        K_tether = E_times_area / R_sphere; // function of the distance to home (X)
+        F_tether_NED_x = K_tether * (X - R_sphere) * (position.x / X);
+        F_tether_NED_y = K_tether * (X - R_sphere) * (position.y / X);
+        F_tether_NED_z = K_tether * (X - R_sphere) * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+    }
+    
+
+//    if (X > X_0){
+//    // CONSTANT FORCE for X_0_ref calculation.
+//    F_tether_NED_x = 30.0 * (position.x / X);
+//    F_tether_NED_y = 30.0 * (position.y / X);
+//    F_tether_NED_z = 30.0 * (position.z / X);
+//    // rotate the forces to body axes
+//    F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+//    F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+//    F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+//    }
+
+
+    force.x = force.x - F_tether_BODY_x;
+    force.y = force.y - F_tether_BODY_y;
+    force.z = force.z - F_tether_BODY_z;
+
+    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     // COMMENT OUT HERE THE FIXED TETHER LENGRTH
-    */
+     //=========================================================================================================================================
+
 
 
 
@@ -461,7 +566,7 @@ K_tether = E_tether * A_tether / R_sphere;
     double F_tether_NED_y = K_tether * (X - X_0) *(position.y / X);
     double F_tether_NED_z = K_tether * (X - X_0) *(position.z / X);
 
-    /
+    
     // option 2:
     // Use constant tether force pointing from the plane to the home location.
     //double F_tether_constant = 20.0; // in Newtons. Use this for constant tether force
@@ -483,16 +588,20 @@ K_tether = E_tether * A_tether / R_sphere;
     
     }
 
-
+    */
 
 
 
 
     // =======================================================================================================================
     // AKM: end
-    */
-
+    
+    // =======================================================================================================================
     // OPTION 3: WINCH CONTROL: DRAG MODE
+    // =======================================================================================================================
+
+    // set initialization distance
+    initilization_distance = 5.0; //meters
 
     // set initial timing
     updating_time = true;
@@ -501,66 +610,222 @@ K_tether = E_tether * A_tether / R_sphere;
     X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
 
     // if the plane mode is farther than defined distance, then we are not updating time
-    if (X >= initilization_distance) {
+    if (X > initilization_distance) {
         updating_time = false;
+       
     }
 //the timer stops updating when X pass the initilization distance,
     if (updating_time) {
         update_time = AP_HAL::millis();
-        X_0 = X;  //winch is reeling out with the plane until reaching the initialization distance
-        Winch_omega = 0;
+        X_0 = X+ 0.5*X;     //+0.05*X; // forcing to start with the cable model just when the initialization distance is passed
+        X_0_prev = X_0;
+                            //X_0 = X;  //winch is reeling out with the plane until reaching the initialization distance
+//        Winch_omega = 0; // asume this for now, imagine tether is laid on the ground up to the initialization distance
+//        Winch_alpha = 0; //
     }
 
     // calculate tether forces in NED coordinates
-    K_tether = 0.7;
-    double F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
-    double F_tether_NED_y = K_tether * (X - X_0) *(position.y / X);
-    double F_tether_NED_z = K_tether * (X - X_0) *(position.z / X);
+    if ( X_0 > X) { //X > initilization_distance &&: this applies the force since take-off, it should be small because airspeed= 0 then q ~= 0
+        // Tether inclined cable model
 
-    // rotate the forces to body axes
-    double F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
-    double F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
-    double F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+        // MODIFY THE AREA!!! MUST BE THE CROSSECTION AREA OF THE CABLE LONGITUDINAL
+
+        drag_tether = 0.5 * 1.225 * 0.0016*X_0 * 0.47 * pow(airspeed / 2, 2);
+        weight_tether = 0.00194 * 9.8 * X_0;
+        load_tether = drag_tether + (weight_tether * pow(pow(position.x,2)+pow(position.y,2),0.5)/X);
+        // only if the plane X is smaller than X_0, add if condition.
+        sag_tether = pow((3 * X*X_0 - 3 * pow(X, 2)) / 8, 0.5);
+        Rx_tether = load_tether * pow(X, 2) / (8 * sag_tether);
+        // calculate the forces in NED coordinates
+        F_tether_NED_x = Rx_tether * (position.x / X);
+        F_tether_NED_y = Rx_tether * (position.y / X);
+        F_tether_NED_z = Rx_tether * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+    }
+ 
+    else if (X > X_0) { 
+        // tether spring model
+        E_times_area = 233230; // 116e9 Modulus times the area using diameter 1.6mm
+        K_tether = E_times_area / X_0; // function of the distance to home (X)
+        F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
+        F_tether_NED_y = K_tether * (X - X_0) * (position.y / X);
+        F_tether_NED_z = K_tether * (X - X_0) * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+    }
 
 
     // calculate the total tether force from the x,y,z tether forces in NED direction
-if (X > X_0) {
     F_tether_total = pow(pow(F_tether_NED_x, 2) + pow(F_tether_NED_y, 2) + pow(F_tether_NED_z, 2), 0.5);
+
     // add tether forces to body axes
     force.x = force.x - F_tether_BODY_x;
     force.y = force.y - F_tether_BODY_y;
     force.z = force.z - F_tether_BODY_z;
-}
-else
-{
-    F_tether_total = 0;
-}
- 
-    // calculate the tension range from the percentage (%) of maximum force
-    F_tether_max = 40.0;
-    F_tether_perc = F_tether_total * 100 / F_tether_max;
-    F_tether_zero = 0.0;
 
-    // determine the reeling angular acceleration
-    if (F_tether_perc <= F_tether_zero) {
-        Winch_alpha = -750; // change this for realistic value
+    // calculate the tension range from the percentage (%) of maximum force
+    // the maximum force should be the Lift when flying in crosswind.
+    //F_tether_max = 500.0;
+    //F_tether_perc = F_tether_total * 100 / F_tether_max;
+    //F_tether_min = 33.3;
+    //F_tether_int = 66.6;
+
+    // MOTOR SPECS
+    // the rated torque of the motor used is 7.7Nm
+    // the motor inertia is 15.8 kg cm^2
+    // resulting in rated alpha of 4873.4 rad/s^2
+
+
+    // use a cubic curve to modify the angular acceleration of the winch
+    // use points (F_tether, alpha) = (0,-4000),(15,-1000),(27.5,0) ,(40,1000),(55,4000)
+    // alpha = 0.109091 F_tether^3 - 9 F_tether^2 + 310.455 F_tether - 4000
+    //Winch_alpha = 0.109091*pow(F_tether_total, 3) - 9 * pow(F_tether_total, 2) + 310.455*F_tether_total - 4000; // run 9
+    // Run 12: extending the poli of Run 9 to double F
+    // 0.0136364 x^3 - 2.25 x^2 + 155.227 x - 4000
+    // (0,-4000), (30,-1000), (55,0), (80,1000), (110,4000) 
+    //Winch_alpha = 0.0136364*pow(F_tether_total, 3) - 2.25*pow(F_tether_total, 2) + 155.227*F_tether_total - 4000;
+
+    // Run 13 Compress 9th run poly by half F
+    // 0.193439 x^3 - 16.9532 x^2 + 492.039 x - 3956.06
+    //Winch_alpha = 0.193439*pow(F_tether_total, 3) - 16.9532*pow(F_tether_total, 2) + 492.039*F_tether_total - 3956.06;
+    
+    // Run 14: faster reel in than out
+    // 0.168337 x^3 - 14.6737 x^2 + 443.617 x - 4023.29
+    //Winch_alpha = 0.168337*pow(F_tether_total, 3) - 14.6737*pow(F_tether_total, 2) + 443.617*F_tether_total - 4023.29;
+
+    //delta_time_delay = (AP_HAL::millis() - time_wait) * 0.001;
+    //if (delta_time_delay > 0.02) {
+    // =========================== DRAG MODE ==========================================================
+    // Winch_omega = -0.0005*pow(F_tether_total, 3) - 0.0874*pow(F_tether_total, 2) + 5.6346*F_tether_total - 117.1468;
+    Inertia_motor =  15.8/pow(100, 2); // motor inertia
+    Torque_rated = -3.0; // rated torque
+    b_motor = 0.1; // motor viscous friction
+    Winch_radius = 0.075;
+    delta_time_s = (AP_HAL::millis() - update_time) * 0.001;
+    winch_gain = 1; // multiplies omega in the diff eqn. solution.
+
+    F_tether_max = 50.0;
+    F_tether_int = 50.0;
+    F_tether_min = 25.0;
+
+    m_omega = 5;
+    limit_omega = 5;
+
+
+    // linear omega as a function of tension (add Winch omega to have some kind of inertia in system.
+    //Winch_omega = Winch_omega  + (0.00000007*pow(F_tether_total,3) - 0.000052189*pow(F_tether_total,2) + 0.012652*F_tether_total - 0.4297);
+    if (F_tether_total > F_tether_max) {
+        Winch_omega = Winch_omega + limit_omega;
     }
-    else if (F_tether_perc > 0.0 && F_tether_perc <= 35.0) {
-        Winch_alpha = 0;
+    else {
+        Winch_omega = Winch_omega  - limit_omega;
     }
-    else if (F_tether_perc > 35.0 && F_tether_perc <= 70.0) {
-        Winch_alpha = 750.0;
+    // Holding fixed (X_0 - X) from defined value from FIX_R100_X0150_cable
+    // X_0 = 1.5*X at all times.
+    //X_0 = 1.2*X;
+    //Winch_omega = (X_0 - X_0_prev) / (1.0/500.0*Winch_radius);
+    //X_0_prev = X_0;
+
+
+    // Linear alpha as a function of tension
+    //Winch_alpha = m_alpha * F_tether_total - limit_alpha;
+
+
+ //   if (F_tether_total > 0 && F_tether_total < F_tether_min) {
+ //       Winch_alpha = -250;
+ //   }
+ //   else if (F_tether_total >= F_tether_min && F_tether_total < F_tether_int) {
+ //       Winch_alpha = -100;
+ //   }
+ //   else if (F_tether_total >= F_tether_int && F_tether_total < F_tether_max) {
+ //       Winch_alpha = 100;
+ //   }
+ //   else if (F_tether_total >= F_tether_max) {
+ //       Winch_alpha = 250;
+ //   }
+
+    //Winch_omega = (Torque_rated - F_tether_total * Winch_radius - Winch_alpha * Inertia_motor) / b_motor;
+    // need to set an initial update_time = now before starting to reel
+    //Winch_omega = Winch_alpha * delta_time_s + Winch_omega;
+//    if (updating_time) {
+//        Winch_omega = (X_0 - X_0_prev) / (delta_time_s*Winch_radius);
+//    }
+//    else {
+//        Winch_omega = 0;
+//    }
+
+    // C_4 = -Inertia_motor * exp(-b_motor * delta_time_s / Inertia_motor)*(Winch_omega - (Torque_rated - F_tether_total * Winch_radius) / b_motor) / b_motor;
+    //Winch_omega = -winch_gain*((Torque_rated - F_tether_total * Winch_radius) / b_motor + exp(-2 * b_motor*delta_time_s / Inertia_motor)*(Winch_omega - (Torque_rated - F_tether_total * Winch_radius) / b_motor));
+    // * b_motor*exp(-b_motor * delta_time_s / Inertia_motor) / Inertia_motor;
+    // =========================== END DRAG MODE ==========================================================
+    //time_wait = AP_HAL::millis();
+
+    //}
+
+    // ======================= PUMPING MODE ========================================================
+/* // Pumping mode with tether and winch.
+    // separate the alpha curve into (+) only when reeling out
+    //                               (-) only when reeling in
+    X_0_min = 100;
+    X_0_max = 350;
+
+    // Where are we?
+    // 1) Below X_0_min
+    if (X_0 < X_0_min) {
+        radius_min_reached = true;
+        radius_max_reached = false;
     }
-    else if (F_tether_perc > 70.0) {
-        Winch_alpha = 1500.0;
+    // 2) Above X_0_max
+    else if (X_0 >= X_0_max) {
+        radius_min_reached = false;
+        radius_max_reached = true;
     }
+
+    // calculate the omega of the winch
+    if (radius_min_reached == true && radius_max_reached == false) {
+        // we are reeling out
+    Winch_omega = 0.0002*pow(F_tether_total, 3) - 0.0691*pow(F_tether_total, 2) + 8.8606*F_tether_total;
+    }
+    else if (radius_min_reached == false && radius_max_reached == true) {
+        // we are reeling in
+        // winch alpha only negative
+        Winch_omega = 0.0006*pow(F_tether_total, 3) - 0.0105*pow(F_tether_total, 2) + 1.8945*F_tether_total - 376.9911;
+    }
+    
+    //Different alpha calculation for VTOL and Forward flight.
+    // the Tension treshold is approx 15N
+
+    if (F_tether_total< 15.0) {
+        Winch_alpha = 0.0;
+    }
+        else
+    {
+        //0.486808 x^3 - 53.3432 x^2 + 1948.24 x - 22775.5
+        Winch_alpha = 0.486808*pow(F_tether_total, 3) - 53.3432*pow(F_tether_total, 2) + 1948.24*F_tether_total - 22775.5;
+    }
+    
+ */    // ======================= END PUMPING MODE =======================================================
+
+    // y = 0.142424 x ^ 3 - 11.5518 x ^ 2 + 349.968 x - 4022.44
+    //Winch_alpha = 0.142424* pow(F_tether_total, 3) - 11.5518*pow(F_tether_total, 2) + 349.968*F_tether_total - 4022.44; //run 10
+
+    //Winch_alpha = -0.0030303*pow(F_tether_total, 3) + 0.25*pow(F_tether_total, 2) + 13.5985*F_tether_total - 500; // run 11
 
 
     // calculate the new output reeling speed
-    Winch_radius = 0.075;
-    Winch_omega_max = 377.0;
-    delta_time_s = (AP_HAL::millis() - update_time) * 0.001; // need to set an initial update_time = now before starting to reel
-    Winch_omega = Winch_alpha * delta_time_s + Winch_omega;
+    
+    //Winch_omega_max = 377.0/2;
+    Winch_omega_max = 50;
+
+    // define the constant reel-out command, Not seems to be working
+    // Winch_omega = 0.1* Winch_omega_max;
+
+
 
     if (Winch_omega >= Winch_omega_max) {
         Winch_omega = Winch_omega_max;
@@ -569,16 +834,31 @@ else
         Winch_omega = -Winch_omega_max;
     }
 
-
     Reeling_speed = Winch_omega * Winch_radius;
-    X_0 = X_0 + Reeling_speed * delta_time_s;
+    //X_0_prev = X_0;
+    
+    
+    // Comment here for deltaX model
+    X_0 = X_0 + Reeling_speed * delta_time_s; // add the reeled length to the previous length
+    
+    // define tether length limits
+   
+    if (X_0 < 0.0) {
+        X_0 = 0.0;
+    }
+    
+    else if (X_0 > 200.0) {
+        X_0 = 200.0;
+    }
+                                              
+    // DIRECT CALCULATION OF X_0 SKIPPING THE ALPHA. THE ORIGINAL X_0 IS ABOVE
+    //X_0 = X_0 + 1 / X + X;
 
     update_time = AP_HAL::millis();
 
-
-    // END OF WINCH MODEL: DRAG MODE
-    //=============================================================================
-
+    // =======================================================================================================================
+   // END OF WINCH MODEL: DRAG MODE
+    // =======================================================================================================================
 
 
 
