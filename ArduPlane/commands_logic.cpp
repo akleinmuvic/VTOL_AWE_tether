@@ -1079,7 +1079,7 @@ void Plane::do_loiter_3d()
 
    // defined above
     S1_in_S2.S2_loc = home;
-    S1_in_S2.S2_radius_cm = 10000;
+    S1_in_S2.S2_radius_cm = 9000;
     S1_in_S2.theta_rho_deg = 30.0f;
     S1_in_S2.S1_radius_cm = S1_in_S2.S2_radius_cm * sinf(radians(S1_in_S2.theta_rho_deg));
     S1_in_S2.azimuth_deg = 0.0f;

@@ -12,15 +12,15 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*
-  very simple plane simulator class. Not aerodynamically accurate,
-  just enough to be able to debug control logic for new frame types
-*/
+ /*
+   very simple plane simulator class. Not aerodynamically accurate,
+   just enough to be able to debug control logic for new frame types
+ */
 
 #include "SIM_Plane.h"
-// AKM
-// AKM: need to include this to calculate the position... or
-// or.. put the function definition on SIM_Plane.h
+ // AKM
+ // AKM: need to include this to calculate the position... or
+ // or.. put the function definition on SIM_Plane.h
 
 
 
@@ -43,7 +43,7 @@ Plane::Plane(const char *home_str, const char *frame_str) :
     frame_height = 0.1f;
 
     ground_behavior = GROUND_BEHAVIOR_FWD_ONLY;
-    
+
     if (strstr(frame_str, "-heavy")) {
         mass = 8;
     }
@@ -52,9 +52,11 @@ Plane::Plane(const char *home_str, const char *frame_str) :
     }
     if (strstr(frame_str, "-elevon")) {
         elevons = true;
-    } else if (strstr(frame_str, "-vtail")) {
+    }
+    else if (strstr(frame_str, "-vtail")) {
         vtail = true;
-    } else if (strstr(frame_str, "-dspoilers")) {
+    }
+    else if (strstr(frame_str, "-dspoilers")) {
         dspoilers = true;
     }
     if (strstr(frame_str, "-elevrev")) {
@@ -75,11 +77,11 @@ Plane::Plane(const char *home_str, const char *frame_str) :
         launch_accel = 10;
         launch_time = 1;
     }
-   if (strstr(frame_str, "-tailsitter")) {
-       tailsitter = true;
-       ground_behavior = GROUND_BEHAVIOR_TAILSITTER;
-       thrust_scale *= 1.5;
-   }
+    if (strstr(frame_str, "-tailsitter")) {
+        tailsitter = true;
+        ground_behavior = GROUND_BEHAVIOR_TAILSITTER;
+        thrust_scale *= 1.5;
+    }
 
     if (strstr(frame_str, "-ice")) {
         ice_engine = true;
@@ -100,17 +102,18 @@ float Plane::liftCoeff(float alpha) const
 
     // clamp the value of alpha to avoid exp(90) in calculation of sigmoid
     const float max_alpha_delta = 0.8f;
-    if (alpha-alpha0 > max_alpha_delta) {
+    if (alpha - alpha0 > max_alpha_delta) {
         alpha = alpha0 + max_alpha_delta;
-    } else if (alpha0-alpha > max_alpha_delta) {
+    }
+    else if (alpha0 - alpha > max_alpha_delta) {
         alpha = alpha0 - max_alpha_delta;
     }
-	double sigmoid = ( 1+exp(-M*(alpha-alpha0))+exp(M*(alpha+alpha0)) ) / (1+exp(-M*(alpha-alpha0))) / (1+exp(M*(alpha+alpha0)));
-	double linear = (1.0-sigmoid) * (c_lift_0 + c_lift_a0*alpha); //Lift at small AoA
-	double flatPlate = sigmoid*(2*copysign(1,alpha)*pow(sin(alpha),2)*cos(alpha)); //Lift beyond stall
+    double sigmoid = (1 + exp(-M * (alpha - alpha0)) + exp(M*(alpha + alpha0))) / (1 + exp(-M * (alpha - alpha0))) / (1 + exp(M*(alpha + alpha0)));
+    double linear = (1.0 - sigmoid) * (c_lift_0 + c_lift_a0 * alpha); //Lift at small AoA
+    double flatPlate = sigmoid * (2 * copysign(1, alpha)*pow(sin(alpha), 2)*cos(alpha)); //Lift beyond stall
 
-	float result  = linear+flatPlate;
-	return result;
+    float result = linear + flatPlate;
+    return result;
 }
 
 float Plane::dragCoeff(float alpha) const
@@ -121,11 +124,11 @@ float Plane::dragCoeff(float alpha) const
     const float c_lift_0 = coefficient.c_lift_0;
     const float c_lift_a0 = coefficient.c_lift_a;
     const float oswald = coefficient.oswald;
-    
-	double AR = pow(b,2)/s;
-	double c_drag_a = c_drag_p + pow(c_lift_0+c_lift_a0*alpha,2)/(M_PI*oswald*AR);
 
-	return c_drag_a;
+    double AR = pow(b, 2) / s;
+    double c_drag_a = c_drag_p + pow(c_lift_0 + c_lift_a0 * alpha, 2) / (M_PI*oswald*AR);
+
+    return c_drag_a;
 }
 
 // Torque calculation function
@@ -133,7 +136,7 @@ Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRu
 {
     float alpha = angle_of_attack;
 
-	//calculate aerodynamic torque
+    //calculate aerodynamic torque
     float effective_airspeed = airspeed;
 
     if (tailsitter) {
@@ -145,7 +148,7 @@ Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRu
         // reduce effective angle of attack as thrust increases
         alpha *= constrain_float(1 - inputThrust, 0, 1);
     }
-    
+
     const float s = coefficient.s;
     const float c = coefficient.c;
     const float b = coefficient.b;
@@ -166,37 +169,37 @@ Vector3f Plane::getTorque(float inputAileron, float inputElevator, float inputRu
     const float c_n_deltaa = coefficient.c_n_deltaa;
     const float c_n_deltar = coefficient.c_n_deltar;
     const Vector3f &CGOffset = coefficient.CGOffset;
-    
+
     float rho = air_density;
 
-	//read angular rates
-	double p = gyro.x;
-	double q = gyro.y;
-	double r = gyro.z;
+    //read angular rates
+    double p = gyro.x;
+    double q = gyro.y;
+    double r = gyro.z;
 
-	double qbar = 1.0/2.0*rho*pow(effective_airspeed,2)*s; //Calculate dynamic pressure
-	double la, na, ma;
-	if (is_zero(effective_airspeed))
-	{
-		la = 0;
-		ma = 0;
-		na = 0;
-	}
-	else
-	{
-		la = qbar*b*(c_l_0 + c_l_b*beta + c_l_p*b*p/(2*effective_airspeed) + c_l_r*b*r/(2*effective_airspeed) + c_l_deltaa*inputAileron + c_l_deltar*inputRudder);
-		ma = qbar*c*(c_m_0 + c_m_a*alpha + c_m_q*c*q/(2*effective_airspeed) + c_m_deltae*inputElevator);
-		na = qbar*b*(c_n_0 + c_n_b*beta + c_n_p*b*p/(2*effective_airspeed) + c_n_r*b*r/(2*effective_airspeed) + c_n_deltaa*inputAileron + c_n_deltar*inputRudder);
-	}
+    double qbar = 1.0 / 2.0*rho*pow(effective_airspeed, 2)*s; //Calculate dynamic pressure
+    double la, na, ma;
+    if (is_zero(effective_airspeed))
+    {
+        la = 0;
+        ma = 0;
+        na = 0;
+    }
+    else
+    {
+        la = qbar * b*(c_l_0 + c_l_b * beta + c_l_p * b*p / (2 * effective_airspeed) + c_l_r * b*r / (2 * effective_airspeed) + c_l_deltaa * inputAileron + c_l_deltar * inputRudder); // rolling moment
+        ma = qbar * c*(c_m_0 + c_m_a * alpha + c_m_q * c*q / (2 * effective_airspeed) + c_m_deltae * inputElevator);                                                           // pitching moment
+        na = qbar * b*(c_n_0 + c_n_b * beta + c_n_p * b*p / (2 * effective_airspeed) + c_n_r * b*r / (2 * effective_airspeed) + c_n_deltaa * inputAileron + c_n_deltar * inputRudder); // yawing moment
+    }
 
 
-	// Add torque to to force misalignment with CG
-	// r x F, where r is the distance from CoG to CoL
-	la +=  CGOffset.y * force.z - CGOffset.z * force.y;
-	ma += -CGOffset.x * force.z + CGOffset.z * force.x;
-	na += -CGOffset.y * force.x + CGOffset.x * force.y;
+    // Add torque to to force misalignment with CG
+    // r x F, where r is the distance from CoG to CoL
+    la += CGOffset.y * force.z - CGOffset.z * force.y;
+    ma += -CGOffset.x * force.z + CGOffset.z * force.x;
+    na += -CGOffset.y * force.x + CGOffset.x * force.y;
 
-	return Vector3f(la, ma, na);
+    return Vector3f(la, ma, na);
 }
 
 // AKM: obtaining the location of the plane
@@ -233,23 +236,23 @@ Vector3f Plane::getForce(float inputAileron, float inputElevator, float inputRud
     const float c_y_r = coefficient.c_y_r;
     const float c_y_deltaa = coefficient.c_y_deltaa;
     const float c_y_deltar = coefficient.c_y_deltar;
-    
+
     float rho = air_density;
 
-	//request lift and drag alpha-coefficients from the corresponding functions
-	double c_lift_a = liftCoeff(alpha);
-	double c_drag_a = dragCoeff(alpha);
+    //request lift and drag alpha-coefficients from the corresponding functions
+    double c_lift_a = liftCoeff(alpha);
+    double c_drag_a = dragCoeff(alpha);
 
-	//convert coefficients to the body frame
-	double c_x_a = -c_drag_a*cos(alpha)+c_lift_a*sin(alpha);
-	double c_x_q = -c_drag_q*cos(alpha)+c_lift_q*sin(alpha);
-	double c_z_a = -c_drag_a*sin(alpha)-c_lift_a*cos(alpha);
-	double c_z_q = -c_drag_q*sin(alpha)-c_lift_q*cos(alpha);
+    //convert coefficients to the body frame
+    double c_x_a = -c_drag_a * cos(alpha) + c_lift_a * sin(alpha);
+    double c_x_q = -c_drag_q * cos(alpha) + c_lift_q * sin(alpha);
+    double c_z_a = -c_drag_a * sin(alpha) - c_lift_a * cos(alpha);
+    double c_z_q = -c_drag_q * sin(alpha) - c_lift_q * cos(alpha);
 
-	//read angular rates
-	double p = gyro.x;
-	double q = gyro.y;
-	double r = gyro.z;
+    //read angular rates
+    double p = gyro.x;
+    double q = gyro.y;
+    double r = gyro.z;
 
     // AKM
     // calculate distance to home here!!!
@@ -261,35 +264,36 @@ Vector3f Plane::getForce(float inputAileron, float inputElevator, float inputRud
 
 
 
-	//calculate aerodynamic force
-	double qbar = 1.0/2.0*rho*pow(airspeed,2)*s; //Calculate dynamic pressure
-	double ax, ay, az;
-	if (is_zero(airspeed))
-	{
-		ax = 0;
-		ay = 0;
-		az = 0;
-	}
-	else
-	{
-		ax = qbar*(c_x_a + c_x_q*c*q/(2*airspeed) - c_drag_deltae*cos(alpha)*fabs(inputElevator) + c_lift_deltae*sin(alpha)*inputElevator);
-		// split c_x_deltae to include "abs" term
-		ay = qbar*(c_y_0 + c_y_b*beta + c_y_p*b*p/(2*airspeed) + c_y_r*b*r/(2*airspeed) + c_y_deltaa*inputAileron + c_y_deltar*inputRudder);
+    //calculate aerodynamic force
+    double qbar = 1.0 / 2.0*rho*pow(airspeed, 2)*s; //Calculate dynamic pressure
+    double ax, ay, az;
+    if (is_zero(airspeed))
+    {
+        ax = 0;
+        ay = 0;
+        az = 0;
+    }
+    else
+    {
+        ax = qbar * (c_x_a + c_x_q * c*q / (2 * airspeed) - c_drag_deltae * cos(alpha)*fabs(inputElevator) + c_lift_deltae * sin(alpha)*inputElevator);
+        // split c_x_deltae to include "abs" term
+        ay = qbar * (c_y_0 + c_y_b * beta + c_y_p * b*p / (2 * airspeed) + c_y_r * b*r / (2 * airspeed) + c_y_deltaa * inputAileron + c_y_deltar * inputRudder);
         // AKM: adding distance_to_home as force to see how it bahaves
         // the force must increase as the distance gets bigger.
         az = qbar * (c_z_a + c_z_q * c*q / (2 * airspeed) - c_drag_deltae * sin(alpha)*fabs(inputElevator) - c_lift_deltae * cos(alpha)*inputElevator);// + distance_to_home;
-		// split c_z_deltae to include "abs" term
-	}
+        // split c_z_deltae to include "abs" term
+    }
     return Vector3f(ax, ay, az);
 }
 
 void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel, Vector3f &body_accel)
 {
-    float aileron  = filtered_servo_angle(input, 0);
+    float aileron = filtered_servo_angle(input, 0);
     float elevator = filtered_servo_angle(input, 1);
-    float rudder   = filtered_servo_angle(input, 3);
+    float rudder = filtered_servo_angle(input, 3);
     bool launch_triggered = input.servos[6] > 1700;
     float throttle;
+    float rho = air_density;
     if (reverse_elevator_rudder) {
         elevator = -elevator;
         rudder = -rudder;
@@ -298,40 +302,43 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         // fake an elevon plane
         float ch1 = aileron;
         float ch2 = elevator;
-        aileron  = (ch2-ch1)/2.0f;
+        aileron = (ch2 - ch1) / 2.0f;
         // the minus does away with the need for RC2_REV=-1
-        elevator = -(ch2+ch1)/2.0f;
+        elevator = -(ch2 + ch1) / 2.0f;
 
         // assume no rudder
         rudder = 0;
-    } else if (vtail) {
+    }
+    else if (vtail) {
         // fake a vtail plane
         float ch1 = elevator;
         float ch2 = rudder;
         // this matches VTAIL_OUTPUT==2
-        elevator = (ch2-ch1)/2.0f;
-        rudder   = (ch2+ch1)/2.0f;
-    } else if (dspoilers) {
+        elevator = (ch2 - ch1) / 2.0f;
+        rudder = (ch2 + ch1) / 2.0f;
+    }
+    else if (dspoilers) {
         // fake a differential spoiler plane. Use outputs 1, 2, 4 and 5
         float dspoiler1_left = filtered_servo_angle(input, 0);
         float dspoiler1_right = filtered_servo_angle(input, 1);
         float dspoiler2_left = filtered_servo_angle(input, 3);
         float dspoiler2_right = filtered_servo_angle(input, 4);
-        float elevon_left  = (dspoiler1_left + dspoiler2_left)/2;
-        float elevon_right = (dspoiler1_right + dspoiler2_right)/2;
-        aileron  = (elevon_right-elevon_left)/2;
-        elevator = (elevon_left+elevon_right)/2;
-        rudder = fabsf(dspoiler1_right - dspoiler2_right)/2 - fabsf(dspoiler1_left - dspoiler2_left)/2;
+        float elevon_left = (dspoiler1_left + dspoiler2_left) / 2;
+        float elevon_right = (dspoiler1_right + dspoiler2_right) / 2;
+        aileron = (elevon_right - elevon_left) / 2;
+        elevator = (elevon_left + elevon_right) / 2;
+        rudder = fabsf(dspoiler1_right - dspoiler2_right) / 2 - fabsf(dspoiler1_left - dspoiler2_left) / 2;
     }
     printf("Aileron: %.1f elevator: %.1f rudder: %.1f\n", aileron, elevator, rudder);
 
     if (reverse_thrust) {
         throttle = filtered_servo_angle(input, 2);
-    } else {
+    }
+    else {
         throttle = filtered_servo_range(input, 2);
     }
-    
-    float thrust     = throttle;
+
+    float thrust = throttle;
 
     if (ice_engine) {
         thrust = icengine.update(input);
@@ -339,7 +346,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
     // calculate angle of attack
     angle_of_attack = atan2f(velocity_air_bf.z, velocity_air_bf.x);
-    beta = atan2f(velocity_air_bf.y,velocity_air_bf.x);
+    beta = atan2f(velocity_air_bf.y, velocity_air_bf.x);
 
     if (tailsitter) {
         /*
@@ -349,7 +356,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         elevator *= 4;
         rudder *= 4;
     }
-    
+
     Vector3f force = getForce(aileron, elevator, rudder);
     // =======================================================================================================================
     // AKM: add force here in z direction (must be in the home direction!)
@@ -360,116 +367,336 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     float r, p, y;
     dcm.to_euler(&r, &p, &y);
 
-    // =======================================================================================================================
-// AKM: create the variable tether length constraint (look in Navigation.cpp)
-    
- /*    // OPTION 1: PUMPING MODE, CONSTANT REEL SPEED
-    // ^^^^^^^^^^^^^^^^^^^^^^
-    // initialization distance, replaces the control_mode set initializer 
-    initilization_distance = 20.0; //meters
-    // define the minimun and maximum radius
-    radius_min = 50; // meters, make sure this is the same as Navigation.cpp
 
-    ??? CHECK THIS OUT! THE RADIUS MIN IS THE X_0 RIGHT AFTER THE INITIALIZATION DISTANCE IS REACHED, RESULTING IN dELTA X VERY BIG!! THEREFORE HIGH LOADS AT X=20
-
-    radius_max = 300; // meters.
-    // define the reeling speeds (constant)
-    reelout_speed = 1.0; // m/s
-    reelin_speed = 1.0; // m/s
-    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
-    // set initial timing
-    updating_time = true;
-    // if the plane mode is farther than defined distance, then we are not updating time
-    if (X >= initilization_distance) {
-        updating_time = false;
-    }
-    //the timer stops updating when X pass the initilization distance,
-    if (updating_time) {
-        time_reelout_start_ms = AP_HAL::millis();
-        time_reelin_start_ms = AP_HAL::millis();
-        X_0 = X;  //winch is reeling out with the plane until reaching the initialization distance
-    }
-    // change position verification from X to X_0
-   // Where are we?
-   // 1) Below R_min
-    if (X_0 < radius_min) {
-        radius_min_reached = true;
-        radius_max_reached = false;
-    }
-    // 2) Above R_max
-    else if (X_0 >= radius_max) {
-        radius_min_reached = false;
-        radius_max_reached = true;
-    }
-    // which direction are we going?
-    if (radius_min_reached == true && radius_max_reached == false) {
-        // we are reeling out
-        time_reelin_start_ms = AP_HAL::millis();
-        time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
-        X_0 = radius_min + (reelout_speed * time_reelout_elapsed_s); // in meters!
-    }
-    else if (radius_min_reached == false && radius_max_reached == true) {
-        // we are reeling in
-        time_reelout_start_ms = AP_HAL::millis();
-        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
-        X_0 = radius_max - (reelin_speed * time_reelin_elapsed_s); // in meters!
-    }
-    
-    if (X > initilization_distance && X < X_0) { // cable model
-        // Tether inclined catenary model
-        drag_tether = 0.5 * 1.225 * (3.1416 * pow(0.0016, 2) / 4) * 0.47 * pow(airspeed / 2, 2);
-        weight_tether = 0.00194 * 9.8 * X;
-        load_tether = drag_tether + (weight_tether * 0.7071);
-        // only if the plane X is smaller than R_sphere, add if condition.
-        sag_tether = pow((3 * X*X_0 - 3 * pow(X, 2)) / 8, 0.5);
-        Rx_tether = load_tether * pow(X, 2) / (8 * sag_tether);
-        // calculate the forces in NED coordinates
-        F_tether_NED_x = Rx_tether * (position.x / X);
-        F_tether_NED_y = Rx_tether * (position.y / X);
-        F_tether_NED_z = Rx_tether * (position.z / X);
-        // rotate the forces to body axes
-        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
-        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
-        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
-    }
-
-    else if (X > X_0) { // spring model 
-        E_times_area = 2; //233230; // Modulus times the area using diameter 1.6mm
-        K_tether = E_times_area / X_0; // function of the distance to home (X)
-        F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
-        F_tether_NED_y = K_tether * (X - X_0) * (position.y / X);
-        F_tether_NED_z = K_tether * (X - X_0) * (position.z / X);
-        // rotate the forces to body axes
-        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
-        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
-        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
-    }
-    else {
-        F_tether_BODY_x = 0;
-        F_tether_BODY_y = 0;
-        F_tether_BODY_z = 0;
-    }
-
-    
-    force.x = force.x - F_tether_BODY_x;
-    force.y = force.y - F_tether_BODY_y;
-    force.z = force.z - F_tether_BODY_z;
-
-
-    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-     // COMMENT OUT HERE THE PUMPING MODE
-    */
+    // NEW TETHER MODEL USING WEIGHT, SPRING TENSION, AND DRAG
+    // =======================================================
 
  
+
+
+
+    // need to have an initialization distance to avoid singularities at We = 0
+    //define tether specifications
+    X0_max = 600; //m
+    X0_min = 30; //m
+    F_tether_max = 5800; //N
+    Elong_tether_max = 0.034; // 1/100
+    d_tether = 0.0016;//0.0016; //m
+    massperlength = 0.001;//0.001; // kg/m
+    C_D_tether = 1;
+
+    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // m
+    X0 = X + 1;
+
+
+
+
+
+
+
+    // no tension, just weight and drag
+    if ((X <= X0) && (X >= X0_min)) {
+
+
+        // CALCULATE THE REELING SPEED
+        // calculate the direction of the tether
+        L_unit_x = position.x / X;
+        L_unit_y = position.y / X;
+        L_unit_z = -position_z / X;
+        // Reeling Velocity: Dot product the Velocity in XYZ with the tether direction 
+        // velocity_ef is the velocity in the earth frame. Z is pointing down (switch)
+        Reeling_speed = velocity_ef.x * L_unit_x + velocity_ef.y * L_unit_y + -velocity_ef.z * L_unit_z;
+
+        if (Reeling_speed < 0) {
+            F_tether_const = 1.0;
+        else
+            F_tether_const = 30.0;
+        }
+
+
+        // TETHER WEIGHT
+        // -------------
+        W_tether = massperlength * X0 * 9.81;
+        // in the Z direction of the NED coordinate system
+        F_W_NED_z = W_tether;
+        F_W_NED_x = 0.0;
+        F_W_NED_y = 0.0;
+
+        // rotate NED to BODY
+        F_W_BODY_x = cos(y)*cos(p)*F_W_NED_x + cos(p)*sin(y)*F_W_NED_y - sin(p)*F_W_NED_z;
+        F_W_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_W_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_W_NED_y + cos(p)*sin(r)*F_W_NED_z;
+        F_W_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_W_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_W_NED_y + cos(r)*cos(p)*F_W_NED_z;
+
+        // TETHER DRAG
+        // -----------
+        // calculate the module of the apparent velocity
+        W_e_mod = pow(pow(velocity_air_bf.x, 2) + pow(velocity_air_bf.y, 2) + pow(velocity_air_bf.x, 2), 0.5);
+
+        // calculate the apparent velocity unit vectors
+        Velocity_air_bf_unit_x = velocity_air_bf.x / W_e_mod;
+        Velocity_air_bf_unit_y = velocity_air_bf.y / W_e_mod;
+        Velocity_air_bf_unit_z = velocity_air_bf.z / W_e_mod;
+
+        // caclulate the drag force in BODY axes
+        F_drag_BODY_x = rho * C_D_tether * X0*d_tether * cos(angle_of_attack) * pow(W_e_mod, 2) * Velocity_air_bf_unit_x / 8;
+        F_drag_BODY_y = rho * C_D_tether * X0*d_tether * cos(angle_of_attack) * pow(W_e_mod, 2) * Velocity_air_bf_unit_y / 8;
+        F_drag_BODY_z = rho * C_D_tether * X0*d_tether * cos(angle_of_attack) * pow(W_e_mod, 2) * Velocity_air_bf_unit_z / 8;
+
+
+        // TETHER TENSION: CONSTANT
+        // ------------------------
+        F_tether_NED_x = -F_tether_const * (position.x / X);
+        F_tether_NED_y = -F_tether_const * (position.y / X);
+        F_tether_NED_z = -F_tether_const * (position.z / X);
+        // rotate the forces to body axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+
+
+        // ADD FORCES TO THE BODY FORCES
+        force.x = force.x + F_W_BODY_x - F_drag_BODY_x + F_tether_BODY_x;
+        force.y = force.y + F_W_BODY_y - F_drag_BODY_y + F_tether_BODY_y;
+        force.z = force.z + F_W_BODY_z - F_drag_BODY_z + F_tether_BODY_z;
+
+
+
+
+
+    }
+
+    // Tension applied, plus weight and drag
+    if ((X >= X0_max) && (X >= X0_min)) {
+
+        // CALCULATE THE REELING SPEED
+        // calculate the direction of the tether
+        L_unit_x = position.x / X;
+        L_unit_y = position.y / X;
+        L_unit_z = -position_z / X;
+        // Reeling Velocity: Dot product the Velocity in XYZ with the tether direction 
+        // velocity_ef is the velocity in the earth frame. Z is pointing down (switch)
+        Reeling_speed = velocity_ef.x * L_unit_x + velocity_ef.y * L_unit_y + -velocity_ef.z * L_unit_z;
+
+
+        // TENSION FORCE
+        // -------------
+        // calculate tether elasticity constant
+        K_tether = F_tether_max / (Elong_tether_max * X0);
+
+        // calculate total tether tension force 
+        F_tether = K_tether * (X - X0);
+
+        // calculate the NED forces by decomposing the tether tension
+        F_tether_NED_x = F_tether * (position.x / X);
+        F_tether_NED_y = F_tether * (position.y / X);
+        F_tether_NED_z = F_tether * (position.z / X);
+
+        // rotate tether forces to BODY axes
+        F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+        F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+        F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+
+
+        // TETHER WEIGHT
+        // -------------
+        W_tether = massperlength * X0 * 9.81;
+        // in the Z direction of the NED coordinate system
+        F_W_NED_z = W_tether;
+        F_W_NED_x = 0.0;
+        F_W_NED_y = 0.0;
+
+        // rotate NED to BODY
+        F_W_BODY_x = cos(y)*cos(p)*F_W_NED_x + cos(p)*sin(y)*F_W_NED_y - sin(p)*F_W_NED_z;
+        F_W_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_W_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_W_NED_y + cos(p)*sin(r)*F_W_NED_z;
+        F_W_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_W_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_W_NED_y + cos(r)*cos(p)*F_W_NED_z;
+
+        // TETHER DRAG
+        // -----------
+        // calculate the module of the apparent velocity
+        W_e_mod = pow(pow(velocity_air_bf.x, 2) + pow(velocity_air_bf.y, 2) + pow(velocity_air_bf.x, 2), 0.5);
+
+        // calculate the apparent velocity unit vectors
+        Velocity_air_bf_unit_x = velocity_air_bf.x / W_e_mod;
+        Velocity_air_bf_unit_y = velocity_air_bf.y / W_e_mod;
+        Velocity_air_bf_unit_z = velocity_air_bf.z / W_e_mod;
+
+        // caclulate the drag force in BODY axes
+        F_drag_BODY_x = rho * C_D_tether * X0*d_tether * cos(angle_of_attack) * pow(W_e_mod, 2) * Velocity_air_bf_unit_x / 8;
+        F_drag_BODY_y = rho * C_D_tether * X0*d_tether * cos(angle_of_attack) * pow(W_e_mod, 2) * Velocity_air_bf_unit_y / 8;
+        F_drag_BODY_z = rho * C_D_tether * X0*d_tether * cos(angle_of_attack) * pow(W_e_mod, 2) * Velocity_air_bf_unit_z / 8;
+
+
+        // ADD FORCES TO THE BODY FORCES
+        force.x = force.x - F_W_BODY_x - F_drag_BODY_x + F_tether_BODY_x;
+        force.y = force.y - F_W_BODY_y - F_drag_BODY_y + F_tether_BODY_y;
+        force.z = force.z - F_W_BODY_z - F_drag_BODY_z + F_tether_BODY_z;
+
+    }
+
+    // END OF NEW TETHER MODEL
+
+
+
+
+    /*
+     
+     // ADD CONSTANT TETHER FORCE AFTER INITIALIZATION DISTANCE:
+     X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+     X_0 = 60;
+     X_max = 150;
+     // K_tether = 950;
+     F_tether_max = 4000; // [N]
+     Elong_tether_max = 0.034; // [ %/100 ]
+
+     K_tether = F_tether_max / (Elong_tether_max * X);
+
+     if (X > X_0 && X < X_max){
+     // CONSTANT FORCE for X_0_ref calculation.
+     F_tether_NED_x = 0.0 * (position.x / X);
+     F_tether_NED_y = 0.0 * (position.y / X);
+     F_tether_NED_z = 0.0 * (position.z / X);
+     // rotate the forces to body axes
+     F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+     F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+     F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+     }
+
+
+
+     
+     // add spring model when the max tether length is reached
+
+     if (X > X_max) {
+     // spring model after reaching X_max
+     F_tether_NED_x = K_tether * (X - X_max) * (position.x / X);
+     F_tether_NED_y = K_tether * (X - X_max) * (position.y / X);
+     F_tether_NED_z = K_tether * (X - X_max) * (position.z / X);
+     // rotate the forces to body axes
+     F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+     F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+     F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+     }
+
+     // add the tether force to the plane forces
+     force.x = force.x - F_tether_BODY_x;
+     force.y = force.y - F_tether_BODY_y;
+     force.z = force.z - F_tether_BODY_z;
+
+     */
+
+
+
+
+     /*   // =======================================================================================================================
+    // AKM: create the variable tether length constraint (look in Navigation.cpp)
+
+         // OPTION 1: PUMPING MODE, CONSTANT REEL SPEED
+        // ^^^^^^^^^^^^^^^^^^^^^^
+        // initialization distance, replaces the control_mode set initializer
+        initilization_distance = 20.0; //meters
+        // define the minimun and maximum radius
+        radius_min = 50; // meters, make sure this is the same as Navigation.cpp
+
+        /// CHECK THIS OUT! THE RADIUS MIN IS THE X_0 RIGHT AFTER THE INITIALIZATION DISTANCE IS REACHED, RESULTING IN dELTA X VERY BIG!! THEREFORE HIGH LOADS AT X=20
+
+        radius_max = 300; // meters.
+        // define the reeling speeds (constant)
+        reelout_speed = 1.0; // m/s
+        reelin_speed = 1.0; // m/s
+        X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+        // set initial timing
+        updating_time = true;
+        // if the plane mode is farther than defined distance, then we are not updating time
+        if (X >= initilization_distance) {
+            updating_time = false;
+        }
+        //the timer stops updating when X pass the initilization distance,
+        if (updating_time) {
+            time_reelout_start_ms = AP_HAL::millis();
+            time_reelin_start_ms = AP_HAL::millis();
+            X_0 = X;  //winch is reeling out with the plane until reaching the initialization distance
+        }
+        // change position verification from X to X_0
+       // Where are we?
+       // 1) Below R_min
+        if (X_0 < radius_min) {
+            radius_min_reached = true;
+            radius_max_reached = false;
+        }
+        // 2) Above R_max
+        else if (X_0 >= radius_max) {
+            radius_min_reached = false;
+            radius_max_reached = true;
+        }
+        // which direction are we going?
+        if (radius_min_reached == true && radius_max_reached == false) {
+            // we are reeling out
+            time_reelin_start_ms = AP_HAL::millis();
+            time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+            X_0 = radius_min + (reelout_speed * time_reelout_elapsed_s); // in meters!
+        }
+        else if (radius_min_reached == false && radius_max_reached == true) {
+            // we are reeling in
+            time_reelout_start_ms = AP_HAL::millis();
+            time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+            X_0 = radius_max - (reelin_speed * time_reelin_elapsed_s); // in meters!
+        }
+
+        if (X > initilization_distance && X < X_0) { // cable model
+            // Tether inclined catenary model
+            drag_tether = 0.5 * 1.225 * (3.1416 * pow(0.0016, 2) / 4) * 0.47 * pow(airspeed / 2, 2);
+            weight_tether = 0.00194 * 9.8 * X;
+            load_tether = drag_tether + (weight_tether * 0.7071);
+            // only if the plane X is smaller than R_sphere, add if condition.
+            sag_tether = pow((3 * X*X_0 - 3 * pow(X, 2)) / 8, 0.5);
+            Rx_tether = load_tether * pow(X, 2) / (8 * sag_tether);
+            // calculate the forces in NED coordinates
+            F_tether_NED_x = Rx_tether * (position.x / X);
+            F_tether_NED_y = Rx_tether * (position.y / X);
+            F_tether_NED_z = Rx_tether * (position.z / X);
+            // rotate the forces to body axes
+            F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+            F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+            F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+        }
+
+        else if (X > X_0) { // spring model
+            E_times_area = 2; //233230; // Modulus times the area using diameter 1.6mm
+            K_tether = E_times_area / X_0; // function of the distance to home (X)
+            F_tether_NED_x = K_tether * (X - X_0) * (position.x / X);
+            F_tether_NED_y = K_tether * (X - X_0) * (position.y / X);
+            F_tether_NED_z = K_tether * (X - X_0) * (position.z / X);
+            // rotate the forces to body axes
+            F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
+            F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
+            F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
+        }
+        else {
+            F_tether_BODY_x = 0;
+            F_tether_BODY_y = 0;
+            F_tether_BODY_z = 0;
+        }
+
+
+        force.x = force.x - F_tether_BODY_x;
+        force.y = force.y - F_tether_BODY_y;
+        force.z = force.z - F_tether_BODY_z;
+
+
+        // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         // COMMENT OUT HERE THE PUMPING MODE
+     */
+
+
      //=========================================================================================================================================
-    // OPTION 2: FIXED TETHER LENGTH
+ /*   // OPTION 2: FIXED TETHER LENGTH
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     //R_sphere = 150; //m same as in Commands_logic.cpp
     //X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
     //X_0 = 200; // meters, this must be equal to S1_in_S2.S2_radius_cm in Commands_logic.cpp
     //X_0 = 50; // this is the R_sphere minus the oscillation of the plane distance with K=0
-    //K_tether = 1; // constant 
-    //K_tether = 0.0087 * X; // variable K as a function of the distance to home (X) 
+    //K_tether = 1; // constant
+    //K_tether = 0.0087 * X; // variable K as a function of the distance to home (X)
     // the maximum is K=0.7 @ L=230m and K=0 @ L=150
 
     R_sphere = 150; //m length of the tether.
@@ -478,7 +705,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
 
 
-    
+
     if (X > X_0 && X < R_sphere){
         // Tether inclined catenary model
         drag_tether = 0.5 * 1.225 * 0.0016*X_0 * 0.47 * pow(airspeed / 2, 2);
@@ -507,7 +734,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
         F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
     }
-    
+
 
 //    if (X > X_0){
 //    // CONSTANT FORCE for X_0_ref calculation.
@@ -533,23 +760,23 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
 
     // how to calculate the tether constant of elasticity
-/*
+
 R_sphere = 240; %m
 E_tether = 116E9; % Pa
 d_tether = 1.6E-3;  % m
 A_tether = pi* d_tether^2 /4; %m^2
 K_tether = E_tether * A_tether / R_sphere;
-    */
-    /*
+
+
     if (X_0 >= radius_min) {
         K_tether = 116000000000 * 0.000002 / X_0;
     }
     else {
         K_tether = 116000000000 * 0.000002 / radius_min;
     }
-    */
 
-    /*
+
+
     K_tether = 0.70;
 
     // define sphere radius and spring elasticity constant
@@ -566,15 +793,15 @@ K_tether = E_tether * A_tether / R_sphere;
     double F_tether_NED_y = K_tether * (X - X_0) *(position.y / X);
     double F_tether_NED_z = K_tether * (X - X_0) *(position.z / X);
 
-    
+
     // option 2:
     // Use constant tether force pointing from the plane to the home location.
     //double F_tether_constant = 20.0; // in Newtons. Use this for constant tether force
-    
+
     //double F_tether_NED_x = F_tether_constant *(position.x / distance_to_home);
     //double F_tether_NED_y = F_tether_constant *(position.y / distance_to_home);
     //double F_tether_NED_z = F_tether_constant *(position.z / distance_to_home);
-    
+
 
     // rotate the forces to body axes
     double F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
@@ -582,38 +809,38 @@ K_tether = E_tether * A_tether / R_sphere;
     double F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
 
     if (X > X_0){
-        force.x = force.x - F_tether_BODY_x; 
+        force.x = force.x - F_tether_BODY_x;
         force.y = force.y - F_tether_BODY_y;
         force.z = force.z - F_tether_BODY_z;
-    
+
     }
 
-    */
 
 
 
 
-    // =======================================================================================================================
-    // AKM: end
-    
-    // =======================================================================================================================
-    // OPTION 3: WINCH CONTROL: DRAG MODE
-    // =======================================================================================================================
 
-    // set initialization distance
-    initilization_distance = 5.0; //meters
+ */   // =======================================================================================================================
+ // AKM: end
 
-    // set initial timing
-    updating_time = true;
+ // =======================================================================================================================
+/*   // OPTION 3: WINCH CONTROL: DRAG MODE
+   // =======================================================================================================================
 
-    // calculate distance to home (X)
-    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+   // set initialization distance
+   initilization_distance = 5.0; //meters
 
-    // if the plane mode is farther than defined distance, then we are not updating time
-    if (X > initilization_distance) {
-        updating_time = false;
-       
-    }
+   // set initial timing
+   updating_time = true;
+
+   // calculate distance to home (X)
+   X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+
+   // if the plane mode is farther than defined distance, then we are not updating time
+   if (X > initilization_distance) {
+       updating_time = false;
+
+   }
 //the timer stops updating when X pass the initilization distance,
     if (updating_time) {
         update_time = AP_HAL::millis();
@@ -645,8 +872,8 @@ K_tether = E_tether * A_tether / R_sphere;
         F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
         F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
     }
- 
-    else if (X > X_0) { 
+
+    else if (X > X_0) {
         // tether spring model
         E_times_area = 233230; // 116e9 Modulus times the area using diameter 1.6mm
         K_tether = E_times_area / X_0; // function of the distance to home (X)
@@ -687,13 +914,13 @@ K_tether = E_tether * A_tether / R_sphere;
     //Winch_alpha = 0.109091*pow(F_tether_total, 3) - 9 * pow(F_tether_total, 2) + 310.455*F_tether_total - 4000; // run 9
     // Run 12: extending the poli of Run 9 to double F
     // 0.0136364 x^3 - 2.25 x^2 + 155.227 x - 4000
-    // (0,-4000), (30,-1000), (55,0), (80,1000), (110,4000) 
+    // (0,-4000), (30,-1000), (55,0), (80,1000), (110,4000)
     //Winch_alpha = 0.0136364*pow(F_tether_total, 3) - 2.25*pow(F_tether_total, 2) + 155.227*F_tether_total - 4000;
 
     // Run 13 Compress 9th run poly by half F
     // 0.193439 x^3 - 16.9532 x^2 + 492.039 x - 3956.06
     //Winch_alpha = 0.193439*pow(F_tether_total, 3) - 16.9532*pow(F_tether_total, 2) + 492.039*F_tether_total - 3956.06;
-    
+
     // Run 14: faster reel in than out
     // 0.168337 x^3 - 14.6737 x^2 + 443.617 x - 4023.29
     //Winch_alpha = 0.168337*pow(F_tether_total, 3) - 14.6737*pow(F_tether_total, 2) + 443.617*F_tether_total - 4023.29;
@@ -768,7 +995,7 @@ K_tether = E_tether * A_tether / R_sphere;
     //}
 
     // ======================= PUMPING MODE ========================================================
-/* // Pumping mode with tether and winch.
+ // Pumping mode with tether and winch.
     // separate the alpha curve into (+) only when reeling out
     //                               (-) only when reeling in
     X_0_min = 100;
@@ -796,7 +1023,7 @@ K_tether = E_tether * A_tether / R_sphere;
         // winch alpha only negative
         Winch_omega = 0.0006*pow(F_tether_total, 3) - 0.0105*pow(F_tether_total, 2) + 1.8945*F_tether_total - 376.9911;
     }
-    
+
     //Different alpha calculation for VTOL and Forward flight.
     // the Tension treshold is approx 15N
 
@@ -808,8 +1035,8 @@ K_tether = E_tether * A_tether / R_sphere;
         //0.486808 x^3 - 53.3432 x^2 + 1948.24 x - 22775.5
         Winch_alpha = 0.486808*pow(F_tether_total, 3) - 53.3432*pow(F_tether_total, 2) + 1948.24*F_tether_total - 22775.5;
     }
-    
- */    // ======================= END PUMPING MODE =======================================================
+
+     // ======================= END PUMPING MODE =======================================================
 
     // y = 0.142424 x ^ 3 - 11.5518 x ^ 2 + 349.968 x - 4022.44
     //Winch_alpha = 0.142424* pow(F_tether_total, 3) - 11.5518*pow(F_tether_total, 2) + 349.968*F_tether_total - 4022.44; //run 10
@@ -818,7 +1045,7 @@ K_tether = E_tether * A_tether / R_sphere;
 
 
     // calculate the new output reeling speed
-    
+
     //Winch_omega_max = 377.0/2;
     Winch_omega_max = 50;
 
@@ -836,29 +1063,29 @@ K_tether = E_tether * A_tether / R_sphere;
 
     Reeling_speed = Winch_omega * Winch_radius;
     //X_0_prev = X_0;
-    
-    
+
+
     // Comment here for deltaX model
     X_0 = X_0 + Reeling_speed * delta_time_s; // add the reeled length to the previous length
-    
+
     // define tether length limits
-   
+
     if (X_0 < 0.0) {
         X_0 = 0.0;
     }
-    
+
     else if (X_0 > 200.0) {
         X_0 = 200.0;
     }
-                                              
+
     // DIRECT CALCULATION OF X_0 SKIPPING THE ALPHA. THE ORIGINAL X_0 IS ABOVE
     //X_0 = X_0 + 1 / X + X;
 
     update_time = AP_HAL::millis();
 
     // =======================================================================================================================
-   // END OF WINCH MODEL: DRAG MODE
-    // =======================================================================================================================
+ */  // END OF WINCH MODEL: DRAG MODE
+ // =======================================================================================================================
 
 
 
@@ -873,19 +1100,20 @@ K_tether = E_tether * A_tether / R_sphere;
             if (launch_start_ms == 0) {
                 launch_start_ms = now;
             }
-            if (now - launch_start_ms < launch_time*1000) {
+            if (now - launch_start_ms < launch_time * 1000) {
                 force.x += launch_accel;
-                force.z += launch_accel/3;
+                force.z += launch_accel / 3;
             }
-        } else {
+        }
+        else {
             // allow reset of catapult
             launch_start_ms = 0;
         }
     }
-    
+
     // simulate engine RPM
     rpm1 = thrust * 7000;
-    
+
     // scale thrust to newtons
     thrust *= thrust_scale;
 
@@ -913,11 +1141,11 @@ void Plane::update(const struct sitl_input &input)
     Vector3f rot_accel;
 
     update_wind(input);
-    
+
     calculate_forces(input, rot_accel, accel_body);
-    
+
     update_dynamics(rot_accel);
-    
+
     // update lat/lon/altitude
     update_position();
     time_advance();
