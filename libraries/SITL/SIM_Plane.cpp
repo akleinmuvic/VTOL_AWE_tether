@@ -375,7 +375,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     // need to have an initialization distance to avoid singularities at We = 0
     //define tether specifications
     
-    X0_min = 500; //m
+    X0_min = 30; //m
     F_tether_max = 5800; //N
     Elong_tether_max = 0.034; // 1/100
     d_tether = 0.0016; //m
@@ -475,14 +475,14 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
 
         // TWO TENSION SET-POINTS FOR TRACTION AND RETRACTION
-        if (Reeling_speed < 0) {
-            Tension_cntl = 15;
-        }
-        else {
-            Tension_cntl = 15;
-        }
+        //if (Reeling_speed < 0) {
+        //    Tension_cntl = 15;
+        //}
+        //else {
+        //    Tension_cntl = 15;
+        //}
         
-      //  Tension_cntl = 15;
+        Tension_cntl = 15;
 
         // TETHER WEIGHT
         // -------------
