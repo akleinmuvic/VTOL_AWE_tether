@@ -80,6 +80,15 @@ namespace SITL {
         double F_drag_BODY_y;
         double F_drag_BODY_z;
 
+        double Tension_2;
+        double Tension_1;
+        double Speed_1;
+        double Speed_2;
+        double m_spd_tension;
+        double Tension_cntl;
+        double rho_tether;
+
+
 
 
 
@@ -165,6 +174,7 @@ namespace SITL {
             float c_drag_q = 0;
             float c_drag_deltae = 0.0;
             float c_drag_p = 0.1;
+            //float c_drag_p = 1.3; // FOr simulating the quadplane drag
             float c_y_0 = 0;
             float c_y_b = -0.98;
             float c_y_p = 0;

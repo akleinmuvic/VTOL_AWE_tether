@@ -371,48 +371,118 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
     // NEW TETHER MODEL USING WEIGHT, SPRING TENSION, AND DRAG
     // =======================================================
 
- 
-
-
 
     // need to have an initialization distance to avoid singularities at We = 0
     //define tether specifications
-    X0_max = 600; //m
-    X0_min = 30; //m
+    
+    X0_min = 500; //m
     F_tether_max = 5800; //N
     Elong_tether_max = 0.034; // 1/100
-    d_tether = 0.0016;//0.0016; //m
-    massperlength = 0.001;//0.001; // kg/m
+    d_tether = 0.0016; //m
+    rho_tether = 970;
+    massperlength = rho_tether * 3.1416*pow(d_tether, 2)/4; //0.001; // kg/m
     C_D_tether = 1;
 
     X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // m
+    
+/*    // USE CONSTANT REEL SPEED TO CHANGE THE LENGTH OF THE TETHER (X0) THE SPRING MODEL IS THEN APPLIED
+         // CONSTANT REEL SPEED MODEL
+        // ^^^^^^^^^^^^^^^^^^^^^^
+        // initialization distance, replaces the control_mode set initializer
+    initilization_distance = 30.0; //meters
+    // define the minimun and maximum radius
+    radius_min = 100; // meters, make sure this is the same as Navigation.cpp
+
+    /// CHECK THIS OUT! THE RADIUS MIN IS THE X_0 RIGHT AFTER THE INITIALIZATION DISTANCE IS REACHED, RESULTING IN dELTA X VERY BIG!! THEREFORE HIGH LOADS AT X=20
+
+    radius_max = 200; // meters.
+    // define the reeling speeds (constant)
+    reelout_speed = 1.0; // m/s
+    reelin_speed = 5.0; // m/s
+    X = pow(pow(position.x, 2) + pow(position.y, 2) + pow(position.z, 2), 0.5); // in meters
+    // set initial timing
+    updating_time = true;
+    // if the plane mode is farther than defined distance, then we are not updating time
+    if (X >= initilization_distance) {
+        updating_time = false;
+    }
+    //the timer stops updating when X pass the initilization distance,
+    if (updating_time) {
+        time_reelout_start_ms = AP_HAL::millis();
+        time_reelin_start_ms = AP_HAL::millis();
+        X0_max = X;  //winch is reeling out with the plane until reaching the initialization distance
+    }
+    // change position verification from X to X_0
+   // Where are we?
+   // 1) Below R_min
+    if (X0_max < radius_min) {
+        radius_min_reached = true;
+        radius_max_reached = false;
+    }
+    // 2) Above R_max
+    else if (X0_max >= radius_max) {
+        radius_min_reached = false;
+        radius_max_reached = true;
+    }
+    // which direction are we going?
+    if (radius_min_reached == true && radius_max_reached == false) {
+        // we are reeling out
+        time_reelin_start_ms = AP_HAL::millis();
+        time_reelout_elapsed_s = (AP_HAL::millis() - time_reelout_start_ms) * 0.001;
+        X0_max = radius_min + (reelout_speed * time_reelout_elapsed_s); // in meters!
+    }
+    else if (radius_min_reached == false && radius_max_reached == true) {
+        // we are reeling in
+        time_reelout_start_ms = AP_HAL::millis();
+        time_reelin_elapsed_s = (AP_HAL::millis() - time_reelin_start_ms) * 0.001;
+        X0_max = radius_max - (reelin_speed * time_reelin_elapsed_s); // in meters!
+    }
+
+    // END OF CONSTANT SPEED MODEL
+    */
+
+    //COMMENT HERE FOR REMOVING THE TETHER MODEL (LATEST AND WORKING)
+
+
+    // OR NOT APPLY TETHER TENSION
     X0 = X + 1;
-
-
-
-
-
-
+    X0_max = 1000; //m
 
     // no tension, just weight and drag
     if ((X <= X0) && (X >= X0_min)) {
-
 
         // CALCULATE THE REELING SPEED
         // calculate the direction of the tether
         L_unit_x = position.x / X;
         L_unit_y = position.y / X;
-        L_unit_z = -position_z / X;
+        L_unit_z = -position.z / X;
         // Reeling Velocity: Dot product the Velocity in XYZ with the tether direction 
         // velocity_ef is the velocity in the earth frame. Z is pointing down (switch)
         Reeling_speed = velocity_ef.x * L_unit_x + velocity_ef.y * L_unit_y + -velocity_ef.z * L_unit_z;
 
-        if (Reeling_speed < 0) {
-            F_tether_const = 1.0;
-        else
-            F_tether_const = 30.0;
-        }
+        // PROPORTIONAL TENSION CONTROLLER AS A FUNCTION OF REELING SPEED
+      //  Tension_2 = 30;
+      //  Tension_1 = 0;
+      //  Speed_2 = 10;
+      //  Speed_1 = -10;
+      //  m_spd_tension = (Tension_2 - Tension_1) / (Speed_2 - Speed_1);
+      //  Tension_cntl = m_spd_tension * Reeling_speed;
+       // if (Tension_cntl < 0) {
+       //     Tension_cntl = 0;
+       // }
+       
 
+
+
+        // TWO TENSION SET-POINTS FOR TRACTION AND RETRACTION
+        if (Reeling_speed < 0) {
+            Tension_cntl = 15;
+        }
+        else {
+            Tension_cntl = 15;
+        }
+        
+      //  Tension_cntl = 15;
 
         // TETHER WEIGHT
         // -------------
@@ -445,9 +515,9 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
         // TETHER TENSION: CONSTANT
         // ------------------------
-        F_tether_NED_x = -F_tether_const * (position.x / X);
-        F_tether_NED_y = -F_tether_const * (position.y / X);
-        F_tether_NED_z = -F_tether_const * (position.z / X);
+        F_tether_NED_x = -Tension_cntl * (position.x / X);
+        F_tether_NED_y = -Tension_cntl * (position.y / X);
+        F_tether_NED_z = -Tension_cntl * (position.z / X);
         // rotate the forces to body axes
         F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
         F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
@@ -459,10 +529,6 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         force.y = force.y + F_W_BODY_y - F_drag_BODY_y + F_tether_BODY_y;
         force.z = force.z + F_W_BODY_z - F_drag_BODY_z + F_tether_BODY_z;
 
-
-
-
-
     }
 
     // Tension applied, plus weight and drag
@@ -472,7 +538,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         // calculate the direction of the tether
         L_unit_x = position.x / X;
         L_unit_y = position.y / X;
-        L_unit_z = -position_z / X;
+        L_unit_z = -position.z / X;
         // Reeling Velocity: Dot product the Velocity in XYZ with the tether direction 
         // velocity_ef is the velocity in the earth frame. Z is pointing down (switch)
         Reeling_speed = velocity_ef.x * L_unit_x + velocity_ef.y * L_unit_y + -velocity_ef.z * L_unit_z;
@@ -484,7 +550,7 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         K_tether = F_tether_max / (Elong_tether_max * X0);
 
         // calculate total tether tension force 
-        F_tether = K_tether * (X - X0);
+        F_tether = K_tether * (X - X0_max);
 
         // calculate the NED forces by decomposing the tether tension
         F_tether_NED_x = F_tether * (position.x / X);
@@ -495,7 +561,6 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
         F_tether_BODY_x = cos(y)*cos(p)*F_tether_NED_x + cos(p)*sin(y)*F_tether_NED_y - sin(p)*F_tether_NED_z;
         F_tether_BODY_y = (cos(y)*sin(r)*sin(p) - cos(r)*sin(y))*F_tether_NED_x + (cos(r)*cos(y) + sin(r)*sin(y)*sin(p))*F_tether_NED_y + cos(p)*sin(r)*F_tether_NED_z;
         F_tether_BODY_z = (sin(y)*sin(r) + cos(r)*cos(y)*sin(p))*F_tether_NED_x + (cos(r)*sin(y)*sin(p) - cos(y)*sin(r))*F_tether_NED_y + cos(r)*cos(p)*F_tether_NED_z;
-
 
         // TETHER WEIGHT
         // -------------
@@ -527,14 +592,14 @@ void Plane::calculate_forces(const struct sitl_input &input, Vector3f &rot_accel
 
 
         // ADD FORCES TO THE BODY FORCES
-        force.x = force.x - F_W_BODY_x - F_drag_BODY_x + F_tether_BODY_x;
-        force.y = force.y - F_W_BODY_y - F_drag_BODY_y + F_tether_BODY_y;
-        force.z = force.z - F_W_BODY_z - F_drag_BODY_z + F_tether_BODY_z;
+        force.x = force.x - F_W_BODY_x - F_drag_BODY_x - F_tether_BODY_x;
+        force.y = force.y - F_W_BODY_y - F_drag_BODY_y - F_tether_BODY_y;
+        force.z = force.z - F_W_BODY_z - F_drag_BODY_z - F_tether_BODY_z;
 
     }
 
     // END OF NEW TETHER MODEL
-
+    
 
 
 
